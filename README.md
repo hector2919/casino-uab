@@ -2,7 +2,7 @@
 
 Juego multijugador online en tiempo real para el hackatón de *Tecnologies Intel·ligents i Arquitectura d'Empresa* (UAB).
 
-Cada jugador entra desde su móvil, mueve su avatar 3D (estilo bloques) por un casino en 3D y va a una de las **6 mesas** para jugar contra los que estén allí:
+Cada jugador entra desde su móvil, mueve su avatar 3D (estilo bloques) por un casino en 3D y va a una de las **7 mesas** para jugar contra los que estén allí:
 
 | Mesa | Cómo se gana |
 |---|---|
@@ -12,6 +12,7 @@ Cada jugador entra desde su móvil, mueve su avatar 3D (estilo bloques) por un c
 | 🧮 Cálculo rápido | Más aciertos en 5 operaciones; desempata el tiempo |
 | 🧠 Memoria | Repetir una secuencia de 6 colores |
 | 🎯 Dianas | Tocar 10 dianas en el menor tiempo |
+| 🔫 Tiroteo | Shooter en primera persona de 60 s con tu avatar: gana quien más bajas haga |
 
 Antes de cada partida hay 10 s con las instrucciones y una cuenta atrás.
 

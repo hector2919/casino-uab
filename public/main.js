@@ -93,7 +93,6 @@ function buildRoom() {
   // Lámparas colgantes
   [[-12, -6], [12, -6], [-12, 12], [12, 12]].forEach(([x, z]) => {
     const l = new THREE.PointLight(0xffc870, .8, 30); l.position.set(x, 7, z); scene.add(l);
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(.6, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffe08a })); lamp.position.copy(l.position); scene.add(lamp);
   });
 
   // Mesas de minijuegos
@@ -238,7 +237,7 @@ let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
-  if (!CFG) return;
+  if (!CFG || window.PAUSE3D) return;
   const w = cv.clientWidth, h = cv.clientHeight;
   if (cv.width !== Math.floor(w * renderer.getPixelRatio()) || cv.height !== Math.floor(h * renderer.getPixelRatio())) {
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();

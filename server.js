@@ -38,7 +38,11 @@ const TABLES = [
   { id: 'dianas',   name: 'Dianas',         emoji: '🎯', x: 820, y: 760, color: '#ffd166', dur: 20000,
     desc: 'Toca 10 dianas lo antes posible',
     howto: 'Irán apareciendo dianas en sitios distintos. Tócalas una a una. Gana quien haga las 10 en menos tiempo.' },
+  { id: 'arena',    name: 'Tiroteo',        emoji: '🔫', x: 850, y: 520, color: '#ff006e', dur: 60000,
+    desc: 'Shooter en primera persona: gana quien más bajas haga',
+    howto: 'Arena de 60 s con tu propio avatar. Móvil: joystick a la izquierda para moverte, desliza a la derecha para apuntar y pulsa 🔫 para disparar. Ordenador: WASD + ratón (clic para disparar). Tiro a la cabeza = más daño. Si caes, reapareces en 2 s.' },
 ];
+const ARENA_SPAWNS = [[-15, -15], [15, 15], [-15, 15], [15, -15], [0, -16], [0, 16], [-16, 0], [16, 0]];
 const ARCADE_POS = { x: 150, y: 520 };
 
 // Tienda: cada artículo ocupa un "hueco" del personaje (slot)
@@ -120,6 +124,7 @@ function score(id, v) {
   if (id === 'stop')     return { key: Math.abs(v - 7770), txt: `${(v / 1000).toFixed(2).replace('.', ',')} s` };
   if (id === 'memoria')  { const c = Math.min(6, v.c | 0), ms = +v.ms || 99999; return { key: -c * 1e6 + ms, txt: `${c}/6 en ${(ms / 1000).toFixed(1).replace('.', ',')} s` }; }
   if (id === 'dianas')   { const h = Math.min(10, v.h | 0), ms = +v.ms || 99999; return { key: (10 - h) * 1e6 + ms, txt: `${h}/10 en ${(ms / 1000).toFixed(1).replace('.', ',')} s` }; }
+  if (id === 'arena')    return { key: -v.k * 1000 + v.d, txt: `${v.k} bajas · ${v.d} muertes` };
   if (id === 'calculo')  { const c = Math.min(5, v.c | 0), ms = +v.ms || 99999; return { key: -c * 1e6 + ms, txt: `${c}/5 en ${(ms / 1000).toFixed(1).replace('.', ',')} s` }; }
 }
 
@@ -131,6 +136,11 @@ function startTable(t, starterId) {
   if (ps.length < MIN_PLAYERS) return sock(starterId)?.emit('toast', `Hacen falta ${MIN_PLAYERS} jugadores en la mesa`);
   st.status = 'playing'; st.players = ps.map(p => p.id); st.results = {};
   const params = makeParams(t.id);
+  if (t.id === 'arena') {
+    st.arena = {};
+    ps.forEach((p, i) => { const [x, z] = ARENA_SPAWNS[i % ARENA_SPAWNS.length]; st.arena[p.id] = { x, z, ry: 0, hp: 100, k: 0, d: 0, alive: true }; });
+    params.me = null; params.spawns = Object.fromEntries(Object.entries(st.arena).map(([id, a]) => [id, [a.x, a.z]]));
+  }
   ps.forEach(p => {
     p.busy = t.id;
     sock(p.id)?.emit('game:start', { table: t.id, name: t.name, emoji: t.emoji, desc: t.desc, howto: t.howto, intro: INTRO, params, rivals: ps.map(x => x.name) });
@@ -143,6 +153,7 @@ function finishTable(t) {
   const st = tables[t.id];
   if (st.status !== 'playing') return;
   clearTimeout(st.timer);
+  if (t.id === 'arena' && st.arena) { Object.entries(st.arena).forEach(([id, a]) => st.results[id] = { k: a.k, d: a.d }); st.arena = null; }
   const ranking = st.players.filter(id => players[id])
     .map(id => ({ id, name: players[id].name, ...score(t.id, st.results[id]) }))
     .sort((a, b) => a.key - b.key)
@@ -156,6 +167,14 @@ function finishTable(t) {
   if (ranking[0]) feed(`🏆 ${ranking[0].name} gana en ${t.name} (+${ranking[0].prize} 🪙)`);
   st.status = 'idle'; st.players = []; st.results = {};
 }
+
+// Arena del shooter: envía posiciones y vida a sus jugadores 20 veces por segundo
+setInterval(() => {
+  const st = tables.arena;
+  if (st.status !== 'playing' || !st.arena) return;
+  const list = Object.entries(st.arena).map(([id, a]) => ({ id, ...a }));
+  Object.keys(st.arena).forEach(id => sock(id)?.emit('arena:state', list));
+}, 50);
 
 // ---------- Conexiones ----------
 io.on('connection', socket => {
@@ -182,6 +201,32 @@ io.on('connection', socket => {
     if (st.status !== 'playing' || socket.id in st.results) return;
     st.results[socket.id] = v;
     if (st.players.every(id => id in st.results || !players[id])) finishTable(t);
+  });
+
+  // Shooter: posición y disparos (el servidor lleva la vida y las bajas)
+  socket.on('arena:pos', d => {
+    const a = tables.arena.arena?.[socket.id]; if (!a || !a.alive || !d) return;
+    a.x = Math.max(-19, Math.min(19, +d.x || 0)); a.z = Math.max(-19, Math.min(19, +d.z || 0)); a.ry = +d.ry || 0;
+  });
+  socket.on('arena:shoot', d => {
+    const A = tables.arena.arena; if (!A || !d) return;
+    const me = A[socket.id], tg = A[d.target];
+    Object.keys(A).forEach(id => id !== socket.id && sock(id)?.emit('arena:fx', { from: socket.id }));
+    if (!me || !me.alive || !tg || !tg.alive || d.target === socket.id) return;
+    if (Math.hypot(me.x - tg.x, me.z - tg.z) > 45) return;
+    tg.hp -= d.head ? 60 : 25;
+    let killed = false;
+    if (tg.hp <= 0) {
+      killed = true; tg.alive = false; tg.hp = 0; tg.d++; me.k++;
+      setTimeout(() => {
+        if (tables.arena.arena !== A) return;
+        const [x, z] = ARENA_SPAWNS[Math.floor(Math.random() * ARENA_SPAWNS.length)];
+        Object.assign(tg, { x, z, hp: 100, alive: true });
+        sock(d.target)?.emit('arena:respawn', { x, z });
+      }, 2000);
+    }
+    const names = { s: players[socket.id]?.name, t: players[d.target]?.name };
+    Object.keys(A).forEach(id => sock(id)?.emit('arena:hit', { shooter: socket.id, target: d.target, head: !!d.head, killed, hp: tg.hp, ...names }));
   });
 
   // Tienda: comprar o equipar/quitar
