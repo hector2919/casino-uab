@@ -7,7 +7,19 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+app.set('trust proxy', true);                   // detrás del proxy de Render (HTTPS)
 app.use(express.static('public'));
+
+// URL pública del juego para el código QR: PUBLIC_URL (si se define) > RENDER_EXTERNAL_URL (la pone Render) > la URL con la que
+// se ha abierto la web, salvo que sea localhost o una red privada (entonces se usa la dirección publicada del casino).
+const DEFAULT_PUBLIC_URL = 'https://casino-uab.onrender.com';
+const PRIVATE_HOST = /^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|\[?::1|.*\.local$)/i;
+app.get('/public-url', (req, res) => {
+  const env = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL;
+  let url = env ? env.replace(/\/+$/, '') : '';
+  if (!url) { const host = req.get('host') || ''; url = PRIVATE_HOST.test(host.split(':')[0]) ? DEFAULT_PUBLIC_URL : `${req.protocol}://${host}`; }
+  res.json({ url, local: !env && PRIVATE_HOST.test((req.get('host') || '').split(':')[0]) });
+});
 app.use('/lib', express.static(__dirname + '/node_modules/three/build'));   // Three.js para el 3D
 app.use('/jsm', express.static(__dirname + '/node_modules/three/examples/jsm')); // efectos (bloom, reflejos)
 
@@ -102,7 +114,7 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 const sock = id => io.sockets.sockets.get(id);
 const feed = msg => io.emit('feed', msg);
-const pub = p => ({ id: p.id, name: p.name, x: p.x, y: p.y, coins: p.coins, look: p.look, busy: !!p.busy, room: p.room });
+const pub = p => ({ id: p.id, name: p.name, x: p.x, y: p.y, coins: p.coins, look: p.look, busy: !!p.busy, room: p.room, face: p.face || 0, pose: p.pose || '', sy: p.sy || 0 });
 const sendMe = id => { const p = players[id]; if (p) sock(id)?.emit('me', { coins: p.coins, owned: p.owned, look: p.look, inv: p.inv }); };
 const inZone = t => Object.values(players).filter(p => !p.busy && p.room === 'main' && dist(p, t) < ZONE);
 
@@ -209,6 +221,9 @@ io.on('connection', socket => {
     p.x = Math.max(25, Math.min(W - 25, +pos.x || 0));
     p.y = Math.max(40, Math.min(H - 25, +pos.y || 0));
     p.room = pos.room === 'classic' ? 'classic' : 'main';
+    p.face = Math.max(-7, Math.min(7, +pos.face || 0));                      // hacia dónde mira el personaje
+    p.pose = pos.pose === 'sit' || pos.pose === 'phone' ? pos.pose : '';     // sentado / usando el móvil (lo ven todos)
+    p.sy = Math.max(0, Math.min(1.2, +pos.sy || 0));                         // altura del asiento
   });
 
   socket.on('table:start', id => { const t = TABLES.find(x => x.id === id); if (t) startTable(t, socket.id); });

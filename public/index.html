@@ -34,6 +34,7 @@
     <div class="pill" id="online">👥 0</div>
     <div class="pill small" id="where">Sala principal</div>
     <span class="grow"></span>
+    <button class="round" id="viewBtn" title="Cambiar perspectiva (V)">👁️</button>
     <button class="round" id="sndBtn" title="Sonido">🔊</button>
     <button class="round" id="qBtn" title="Calidad gráfica">✨</button>
   </div>
@@ -42,7 +43,8 @@
   <div id="prompt"><span class="key">E</span><span id="promptTxt"></span></div>
   <button id="useBtn" class="gold">Usar</button>
   <button id="phoneBtn" title="Teléfono (T)">📱</button>
-  <div id="lockHint">Haz clic en la pantalla para mirar con el ratón · WASD para andar · Shift para correr · E para interactuar · T para el teléfono</div>
+  <button id="qrBtn" title="Invitar con código QR" aria-label="Código QR para unirse"><svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm9-2h2v2h-2v-2zm4 0h3v2h-3v-2zm-4 4h2v4h-2v-4zm3 1h3v3h-3v-3zm1-5h2v2h-2v-2z"/></svg></button>
+  <div id="lockHint">Haz clic en la pantalla para mirar con el ratón · WASD para andar · Shift para correr · E para interactuar · T teléfono · V cambiar de perspectiva</div>
   <div id="joy"><div id="knob"></div></div>
 </div>
 <div id="fade"><div id="fadeTxt"></div></div>
@@ -89,6 +91,19 @@
 </section>
 <div id="frameWrap"><header><b id="frameTitle"></b><a id="frameOpen" target="_blank" rel="noopener">Abrir aparte ↗</a><button id="frameClose">✕ Volver al casino</button></header><iframe id="frame" allow="autoplay; fullscreen"></iframe></div>
 
+<!-- CÓDIGO QR PARA UNIRSE -->
+<section id="qrModal" class="overlay">
+  <div class="card qrCard">
+    <button class="x" id="qrX" aria-label="Cerrar">✕</button>
+    <div class="logo small">CASINO<span>UAB</span></div>
+    <div class="qrFrame"><i></i><i></i><i></i><i></i><div id="qrBox"></div></div>
+    <p class="qrText">Escanea el código para unirte al casino</p>
+    <div class="qrUrl" id="qrUrl">…</div>
+    <p class="hint" id="qrNote"></p>
+    <div class="qrBtns"><button class="gold" id="qrCopy">📋 Copiar enlace</button><button class="ghost" id="qrClose">Cerrar</button></div>
+  </div>
+</section>
+
 <!-- TELÉFONO -->
 <div id="phone">
   <div class="device">
@@ -121,8 +136,9 @@
   import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
   import { GammaCorrectionShader } from 'three/addons/shaders/GammaCorrectionShader.js';
   import { Reflector } from 'three/addons/objects/Reflector.js';
+  import { mergeBufferGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
   window.THREE = THREE;
-  window.FX = { EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, GammaCorrectionShader, Reflector };
+  window.FX = { EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, GammaCorrectionShader, Reflector, merge: mergeBufferGeometries };
   const load = src => new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => ko(new Error(src)); document.body.appendChild(s); });
   try {
     await Promise.race([document.fonts.load('48px Bungee'), new Promise(r => setTimeout(r, 1500))]);

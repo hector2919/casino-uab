@@ -21,7 +21,7 @@ Para jugar con 2 "jugadores", abre dos pestañas (una de ellas en incógnito).
 | `public/main.js` | Cliente: cámara en primera persona, controles, colisiones, interacciones, camareros, teléfono, tienda y pantallas de juego | controles, teléfono, cómo se comportan los camareros |
 | `public/world.js` | Sala principal 3D: suelo, paredes, ruleta central, estaciones de juego, tienda, bar, tragaperras | cambiar la decoración o mover cosas |
 | `public/classic.js` | Sala del Casino Clásico (blackjack, póquer, ruleta, billar, bingo) | añadir o cambiar mesas clásicas |
-| `public/avatar3d.js` | Personajes 3D (jugadores, camareros, crupieres) y cosméticos | cambiar el aspecto de los personajes |
+| `public/avatar3d.js` | Personajes 3D realistas (cuerpo, rostro, ropa, esqueleto y animaciones), personal del casino y manos en 1ª persona | cambiar el aspecto o las animaciones de los personajes |
 | `public/sfx.js` | Efectos de sonido sintetizados | sonidos |
 | `public/games.js` | Los minijuegos sencillos (uno por función) | arreglar o crear minijuegos |
 | `public/arena.js` | Minijuego Tiroteo (shooter en primera persona) | cambiar el shooter |
@@ -54,7 +54,7 @@ helado: { name: 'Helado', emoji: '🍦', price: 9, kind: 'Postre' },
 ```
 (`kind` puede ser `Bebida`, `Comida` o `Postre`; aparece solo en el menú del teléfono y de la barra.)
 
-**Convertir una mesa clásica en un juego real** → las mesas de `public/classic.js` son solo decoración (`station(...)`). Para hacerlas jugables, añade la mesa en `TABLES` del servidor y sigue los 3 pasos de "Crear un minijuego nuevo".
+**Cambiar un juego del casino clásico** → las mesas están en `public/classic.js` (decoración y zona) y su lógica de apuestas en `public/classic-games.js` (el servidor solo cobra y paga: `classic:bet` / `classic:settle`).
 
 ## 4. Cómo trabajar sin pisarnos
 ```bash
@@ -65,6 +65,10 @@ git add -A && git commit -m "Qué he cambiado"
 git push -u origin mi-cambio          # y abre un Pull Request en GitHub
 ```
 Para ir rápido en el hackatón también vale hacer commit directo a `main`, pero **avisad por el grupo** y haced `git pull` antes.
+
+**Cambiar la URL del código QR** → por defecto es la de Render (`RENDER_EXTERNAL_URL`). Para otra dirección, define la variable de entorno `PUBLIC_URL` (en Render: Environment). Si el servidor se abre desde localhost o una IP privada, el QR usa `https://casino-uab.onrender.com` (constante `DEFAULT_PUBLIC_URL` de `server.js`).
+
+**Cambiar el aspecto de un personaje** → `appearance()` en `avatar3d.js` decide género, piel, peinado, ojos… a partir de la semilla (id del jugador). Los uniformes del personal están en `STAFF`.
 
 ## 5. Publicar los cambios (Render)
 Render **no** se actualiza solo. Tras subir a `main`: entrar en el dashboard de Render (cuenta de Héctor) → servicio `casino-uab` → **Manual Deploy → Deploy latest commit**. Tarda ~1 min.

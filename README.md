@@ -47,11 +47,17 @@ El casino pasa a verse **en primera persona**, con estética de casino de Las Ve
 |---|---|
 | **Sala principal** | Entrada con alfombra roja · tienda VIP al fondo · bar en la esquina derecha · 6 estaciones de juego (una por minijuego, 7 con el Tiroteo) alrededor · tragaperras, arcade y lounge |
 | **Centro** | Gran estructura con ruleta colgante. Dentro hay un **ascensor** al Casino Clásico |
-| **Casino clásico** | Otra sala (verde, burdeos y dorado): blackjack, póquer, ruleta, billar y bingo, con crupieres, fichas y cartas. *De momento son ambientación (aún no se juegan).* |
+| **Casino clásico** | Otra sala (verde, burdeos y dorado): blackjack, póquer, ruleta, billar y bingo, con crupieres, fichas y cartas. Las mesas son jugables con apuestas de monedas ficticias contra la banca (`classic-games.js`). |
 | **Teléfono** | Tecla **T** / botón 📱: cartera, carta del bar, pedidos, inventario y mapa |
 | **Bar** | Pide en la barra o desde el teléfono. Se cobra con monedas ficticias y un camarero te lleva el pedido |
 
-**Controles:** `WASD` andar · ratón para mirar (clic en la pantalla) · `Shift` correr · `E` interactuar · `T` teléfono. En móvil: joystick a la izquierda y deslizar a la derecha para mirar.
+**Controles:** `WASD` andar · ratón para mirar (clic en la pantalla) · `Shift` correr · `E` interactuar (también sentarse en sillas y taburetes) · `T` teléfono · `V` cambiar de perspectiva. En móvil: joystick a la izquierda y deslizar a la derecha para mirar.
+
+**Perspectiva:** primera persona (con manos al usar el teléfono o interactuar) o tercera persona (cámara sobre el hombro, rueda del ratón para acercar/alejar y que no atraviesa paredes ni columnas). Botón 👁️/🧍 arriba a la derecha. Cambiar de vista no mueve al personaje ni interrumpe la partida.
+
+**Personajes:** modelos humanos originales generados por código (sin archivos externos): rostro, peinados, ropa con tejido, esqueleto y animaciones de caminar, correr, girar, sentarse, usar el teléfono, llevar bandeja y repartir cartas. Cada jugador tiene una apariencia propia (se deriva de su id, así que todos ven lo mismo).
+
+**QR:** botón de QR abajo a la izquierda → ventana con el código, la URL pública y «Copiar enlace». La URL sale de `GET /public-url` (variable `PUBLIC_URL`, o `RENDER_EXTERNAL_URL` que Render define solo; nunca localhost).
 **Calidad gráfica** (botón ✨ arriba a la derecha): alta (bloom + reflejos), media y baja. En móvil arranca en baja y el juego baja solo de nivel si va lento.
 
 Cambios mínimos en `server.js` (todos aditivos): nueva distribución de mesas/tienda/arcade, ruta `/jsm` para los efectos 3D, `room` de cada jugador (sala principal o clásica) y los eventos `bar:order` / `order:arrived` con la carta `BAR`.

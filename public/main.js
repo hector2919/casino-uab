@@ -10,6 +10,8 @@ if (PROJ) document.body.classList.add('proj');
 let CFG = null, world = null, me = null, myData = { coins: 0, owned: [], look: {}, inv: {} };
 let others = {}, tableState = {}, joined = false, busy = false, transitioning = false;
 let room = 'main', barTo = 'me';
+let viewMode = 'first';        // 'first' = primera persona · 'third' = tercera persona
+try { if (localStorage.casinoView === 'third') viewMode = 'third'; } catch (e) {}
 const orders = {}, orderQ = [], history = [];
 const to3 = (x, y) => ({ x: (x - 500) / U, z: (y - 500) / U });
 const turn = (a, b, k) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * k; };
@@ -21,7 +23,7 @@ function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add
 const open = id => { $(id).classList.add('on'); try { document.exitPointerLock(); } catch (e) {} };
 const close = id => $(id).classList.remove('on');
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => close(b.dataset.close));
-const uiOpen = () => ['join', 'shop', 'barMenu', 'game', 'arcade'].some(i => $(i).classList.contains('on')) || $('frameWrap').classList.contains('on') || $('phone').classList.contains('on');
+const uiOpen = () => ['join', 'shop', 'barMenu', 'game', 'arcade', 'qrModal'].some(i => $(i).classList.contains('on')) || $('frameWrap').classList.contains('on') || $('phone').classList.contains('on');
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button')) SFX.click(); }, true);
 
 // ---------- Escena, render y calidad ----------
@@ -31,6 +33,7 @@ renderer.outputEncoding = T.sRGBEncoding;
 const scene = new T.Scene();
 const camera = new T.PerspectiveCamera(72, 1, .08, 220);
 const hemi = new T.HemisphereLight(0x8c78f0, 0x22103a, .62); scene.add(hemi);
+scene.add(camera);                                    // la cámara en la escena para poder llevar las manos en primera persona
 let composer = null, bloom = null, quality = TOUCH ? 'low' : 'high', pr = 1;
 try { const q = localStorage.casinoQuality; if (q) quality = q; } catch (e) {}
 function applyQuality(q) {
@@ -68,6 +71,7 @@ function applyRoom() {
   scene.environment = r.env || world.env; const hm = r.hemi || [0x8c78f0, 0x22103a, .62]; hemi.color.set(hm[0]); hemi.groundColor.set(hm[1]); hemi.intensity = hm[2];
   $('where').textContent = room === 'main' ? 'Sala principal' : 'Casino clásico';
   Object.values(others).forEach(o => o.mesh.visible = o.room === room);
+  if (me && me.mesh) me.mesh.visible = false;
   Object.values(labels).forEach(l => l.style.display = 'none');
   actionKey = '';
 }
@@ -118,9 +122,10 @@ socket.on('world', w => {
   w.players.forEach(p => {
     seen[p.id] = 1;
     if (p.id === socket.id) {
-      if (!me) { const q = to3(p.x, p.y); me = { x: q.x, z: q.z, yaw: 0, pitch: 0, room: 'main', moving: false, mesh: null, bob: 0, step: 0 }; }
+      if (!me) { const q = to3(p.x, p.y); me = { x: q.x, z: q.z, yaw: 0, pitch: 0, face: Math.PI, pose: '', sy: 0, room: 'main', moving: false, mesh: null, bob: 0, step: 0, speed: 0, turnRate: 0, dist: 3.4, distWant: 3.4, sitting: false, phoneOn: false, reachT: 0, seat: null, sig: '' }; }
       me.name = p.name; me.coins = p.coins; busy = p.busy; return;
     }
+    if (p.look) p.look.__seed = p.id;
     let o = others[p.id];
     if (!o) { o = others[p.id] = { ...p, rx: p.x, ry: p.y, dir: 0, mesh: AV.create(p.look, { seed: p.id }) }; scene.add(o.mesh); }
     Object.assign(o, p); AV.setLook(o.mesh, p.look); o.mesh.visible = o.room === room;
@@ -163,11 +168,12 @@ addEventListener('pointercancel', e => { if (dragLook && dragLook.id === e.point
 addEventListener('keydown', e => {
   if (document.activeElement.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
-  if (k === 'escape') { ['shop', 'barMenu', 'arcade'].forEach(close); $('phone').classList.remove('on'); return; }
+  if (k === 'escape') { ['shop', 'barMenu', 'arcade', 'qrModal'].forEach(close); if ($('phone').classList.contains('on')) togglePhone(false); return; }
   if (!joined || transitioning) return;
   if (k === 't') { togglePhone(); return; }
+  if (k === 'v' && !uiOpen()) { toggleView(); return; }
   keys[k] = 1;
-  if (k === 'e' && !uiOpen() && !busy) useAction();
+  if (k === 'e' && !uiOpen() && !busy) { if (me) me.reachT = .6; useAction(); }
   if (k === ' ') e.preventDefault();
 });
 addEventListener('keyup', e => keys[e.key.toLowerCase()] = 0);
@@ -205,23 +211,108 @@ let lastSent = 0;
 function sendMove(force) {
   const now = performance.now();
   if (!force && now - lastSent < 60) return; lastSent = now;
-  socket.emit('move', { x: me.x * U + 500, y: me.z * U + 500, room: me.room });
+  socket.emit('move', { x: me.x * U + 500, y: me.z * U + 500, room: me.room, face: +me.face.toFixed(2), pose: me.pose || '', sy: me.sy || 0 });
 }
+const WALK = 3.2, RUN = 6.4;                         // m/s
+const wrapA = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+const setPose = () => { me.pose = me.sitting ? 'sit' : me.phoneOn ? 'phone' : ''; };
+function sitDown(seat) {
+  me.sitting = true; me.seat = seat; me.x = seat.x; me.z = seat.z; me.face = seat.face; me.sy = seat.sy;
+  me.yaw = seat.face + Math.PI; me.pitch = 0; setPose(); sendMove(true); SFX.open();
+}
+function standUp() {
+  if (!me.sitting) return; me.sitting = false; me.sy = 0; setPose();
+  [me.x, me.z] = collide(me.x - Math.sin(me.face) * .75, me.z - Math.cos(me.face) * .75, me.room); sendMove(true);
+}
+function toggleView() {
+  viewMode = viewMode === 'first' ? 'third' : 'first';
+  try { localStorage.casinoView = viewMode; } catch (e) {}
+  syncViewBtn(); toast(viewMode === 'first' ? '👁️ Primera persona' : '🧍 Tercera persona');
+}
+function syncViewBtn() { $('viewBtn').textContent = viewMode === 'first' ? '👁️' : '🧍'; $('viewBtn').title = (viewMode === 'first' ? 'Primera persona' : 'Tercera persona') + ' · pulsa para cambiar (V)'; }
+$('viewBtn').onclick = () => toggleView(); syncViewBtn();
 function updateMe(dt, t) {
-  me.moving = false;
-  if (busy || uiOpen() || transitioning) { return; }
-  let fwd = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0) - joy.y;
-  let rgt = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + joy.x;
-  if (keys.arrowleft) me.yaw += 1.9 * dt; if (keys.arrowright) me.yaw -= 1.9 * dt;
-  const len = Math.hypot(fwd, rgt); if (len > 1) { fwd /= len; rgt /= len; }
-  if (len < .05) return;
-  const sp = (keys.shift ? 8.4 : 5.4) * dt, sy = Math.sin(me.yaw), cy = Math.cos(me.yaw);
-  const nx = me.x + (-sy * fwd + cy * rgt) * sp, nz = me.z + (-cy * fwd - sy * rgt) * sp;
-  [me.x, me.z] = collide(nx, nz, me.room);
-  me.moving = true; me.bob += dt * (keys.shift ? 12 : 9);
-  if (t - me.step > (keys.shift ? .28 : .42)) { me.step = t; SFX.step(); }
-  sendMove(false);
+  me.moving = false; const px0 = me.x, pz0 = me.z, pf = me.face;
+  let wantFace = null;
+  if (!(busy || uiOpen() || transitioning)) {
+    let fwd = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0) - joy.y;
+    let rgt = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + joy.x;
+    if (keys.arrowleft) me.yaw += 1.9 * dt; if (keys.arrowright) me.yaw -= 1.9 * dt;
+    const len = Math.hypot(fwd, rgt); if (len > 1) { fwd /= len; rgt /= len; }
+    if (len >= .05) {
+      if (me.sitting) standUp();
+      const sy = Math.sin(me.yaw), cy = Math.cos(me.yaw), run = keys.shift || Math.hypot(joy.x, joy.y) > .9;
+      const dx = -sy * fwd + cy * rgt, dz = -cy * fwd - sy * rgt, sp = (run ? RUN : WALK) * dt;   // dx, dz ya llevan la intensidad (0..1) del joystick
+      [me.x, me.z] = collide(me.x + dx * sp, me.z + dz * sp, me.room);
+      me.moving = true; me.bob += dt * (run ? 12 : 8);
+      if (t - me.step > (run ? .3 : .45)) { me.step = t; SFX.step(); }
+      wantFace = Math.atan2(dx, dz);
+    }
+  }
+  // velocidad real (alimenta las animaciones de caminar/correr)
+  me.speed += (Math.hypot(me.x - px0, me.z - pz0) / Math.max(dt, .001) - me.speed) * Math.min(1, dt * 10);
+  // hacia dónde mira el personaje
+  if (me.sitting) { /* orientación fija del asiento */ }
+  else if (viewMode === 'first') me.face = me.yaw + Math.PI;
+  else if (wantFace !== null) me.face = turn(me.face, wantFace, 1 - Math.exp(-dt * 12));
+  me.turnRate += (wrapA(me.face - pf) / Math.max(dt, .001) - me.turnRate) * Math.min(1, dt * 10);
+  me.reachT = Math.max(0, me.reachT - dt);
+  // sincronización: al moverse, y también si cambia la orientación o la pose
+  const sig = me.face.toFixed(1) + '|' + me.pose + '|' + me.sy;
+  if (me.moving) sendMove(false); else if (sig !== me.sig && performance.now() - lastSent > 110) { me.sig = sig; sendMove(true); }
 }
+
+// ---------- Cámara: primera y tercera persona ----------
+let hands = null, handsKey = '';
+function ensureMe() {
+  if (!me.mesh) { me.mesh = AV.create(myData.look, { seed: socket.id }); scene.add(me.mesh); }
+  AV.setLook(me.mesh, myData.look);
+}
+function ensureHands() {
+  const k = JSON.stringify(myData.look && myData.look.color);
+  if (hands && k === handsKey) return; if (hands) camera.remove(hands.group);
+  hands = AV.createHands(myData.look, socket.id); camera.add(hands.group); handsKey = k;
+}
+// Longitud libre del "brazo" de la cámara: se acorta si hay una pared, columna u objeto alto por el camino
+function camBoom(tx, ty, tz, bx, by, bz, maxD) {
+  const cols = world.colliders[room] || [], HS = world.S / 2 - .45, ceil = (room === 'main' ? 15 : 10) - .35;
+  for (let s = .25; s <= maxD; s += .12) {
+    const x = tx + bx * s, y = ty + by * s, z = tz + bz * s; let hit = y < .3 || y > ceil || Math.abs(x) > HS || Math.abs(z) > HS;
+    if (!hit) for (const c of cols) {
+      if (y > (c.h || 1.2) + .25) continue;
+      if (c.t === 'c') { const dx = x - c.x, dz = z - c.z, m = c.r + .3; if (dx * dx + dz * dz < m * m) { hit = true; break; } }
+      else if (x > c.x0 - .3 && x < c.x1 + .3 && z > c.z0 - .3 && z < c.z1 + .3) { hit = true; break; }
+    }
+    if (hit) return Math.max(.45, s - .35);
+  }
+  return maxD;
+}
+function updateCamera(dt, t) {
+  ensureMe();
+  const eye = me.sitting ? me.sy + .82 : 1.66;
+  const mode = me.phoneOn ? 'phone' : me.reachT > 0 ? 'reach' : 'none';
+  me.mesh.visible = false;
+  if (viewMode === 'first') {
+    me.pitch = Math.max(-1.35, Math.min(1.35, me.pitch));
+    camera.position.set(me.x, eye + (me.moving ? Math.sin(me.bob) * .03 : 0), me.z);
+    camera.rotation.set(me.pitch, me.yaw, 0, 'YXZ');
+    ensureHands(); hands.update(dt, mode, t, me.moving);
+  } else {
+    if (hands) hands.group.visible = false;
+    me.pitch = Math.max(-1.1, Math.min(.8, me.pitch));
+    const cp = Math.cos(me.pitch), fx = -Math.sin(me.yaw) * cp, fy = Math.sin(me.pitch), fz = -Math.cos(me.yaw) * cp;
+    const ty = me.sitting ? me.sy + .75 : 1.55, tx = me.x + Math.cos(me.yaw) * .3, tz = me.z - Math.sin(me.yaw) * .3;   // sobre el hombro
+    const free = camBoom(tx, ty, tz, -fx, -fy, -fz, me.distWant);
+    me.dist = free < me.dist ? free : me.dist + (free - me.dist) * Math.min(1, dt * 3);        // se acerca al instante, se aleja con suavidad
+    camera.position.set(tx - fx * me.dist, ty - fy * me.dist, tz - fz * me.dist);
+    camera.rotation.set(me.pitch, me.yaw, 0, 'YXZ');
+    // el personaje, con su animación y su pose
+    const m = me.mesh; m.visible = me.dist > .8;
+    m.position.set(me.x, me.sitting ? Math.max(0, me.sy - .41) : 0, me.z); m.rotation.y = me.face;
+    AV.update(m, dt, { speed: me.moving ? me.speed : 0, turn: me.turnRate, pose: me.pose === 'phone' ? 'phone' : me.pose });
+  }
+}
+$('cv').addEventListener('wheel', e => { if (viewMode === 'third' && me && !uiOpen()) { me.distWant = Math.max(1.8, Math.min(5.5, me.distWant + e.deltaY * .003)); e.preventDefault(); } }, { passive: false });
 
 // ---------- Personal del casino: camareros que se mueven y reparten pedidos ----------
 const staff = [];
@@ -287,8 +378,9 @@ function updateStaff(dt, t) {
     } else if (s.state === 'return') {
       if (walk(s, bp.x - 1.5, bp.z + 2.5, dt, 3) < 1 || s.stuck > 2.5) { s.state = 'patrol'; s.wp = null; s.wait = 1; s.sent = false; AV.carry(s.mesh, null); }
     }
-    const moving = Math.hypot(s.x - s.mesh.position.x, s.z - s.mesh.position.z) > .001;
-    s.mesh.position.set(s.x, 0, s.z); AV.animate(s.mesh, t, moving);
+    const mv = Math.hypot(s.x - s.mesh.position.x, s.z - s.mesh.position.z) / Math.max(dt, .001);
+    s.sp = (s.sp || 0) + (mv - (s.sp || 0)) * Math.min(1, dt * 8);
+    s.mesh.position.set(s.x, 0, s.z); AV.update(s.mesh, dt, { speed: s.sp < .25 ? 0 : s.sp, turn: 0 });
   });
 }
 socket.on('order', o => {
@@ -309,6 +401,14 @@ let actionKey = '', current = null;
 const sd = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);                           // distancia en unidades del servidor
 function findInteract() {
   if (!me || busy || transitioning) return null;
+  const base = findStation();
+  // Sentado: E abre la mesa (juego, barra…) si la hay a mano; si no, levanta. Moverse también levanta.
+  if (me.sitting) return base ? { ...base, key: 'sat-' + base.key, sub: (base.sub ? base.sub + ' · ' : '') + 'Muévete para levantarte' } : { key: 'stand', icon: '🧍', txt: 'Levantarse', sub: 'O muévete para levantarte', act: standUp };
+  const seat = (world.seats[me.room] || []).find(q => Math.hypot(me.x - q.x, me.z - q.z) < 1.15);
+  if (seat) return { key: 'sit', icon: '🪑', txt: 'Sentarse', sub: base ? 'Y luego pulsa E para ' + base.txt.toLowerCase() : 'Descansa un momento', act: () => sitDown(seat) };
+  return base;
+}
+function findStation() {
   const mp = { x: me.x * U + 500, y: me.z * U + 500 };
   if (me.room === 'classic') {
     const ex = world.spots.classic.exit;
@@ -342,7 +442,7 @@ function goRoom(to) {
   SFX.door(); $('fadeTxt').textContent = to === 'classic' ? '🛗 Subiendo al Casino Clásico…' : '🛗 Bajando a la sala principal…';
   $('fade').classList.add('on'); world.liftOpen = 1;
   setTimeout(() => {
-    room = me.room = to;
+    room = me.room = to; me.sitting = false; me.sy = 0; setPose();
     if (to === 'classic') { me.x = 0; me.z = 21.5; me.yaw = 0; } else { me.x = 0; me.z = -2.8; me.yaw = Math.PI; }
     me.pitch = 0; applyRoom(); sendMove(true);
     setTimeout(() => { $('fade').classList.remove('on'); transitioning = false; world.liftOpen = 0; if (to === 'classic') toast('🃏 Bienvenido al Casino Clásico'); }, 500);
@@ -364,27 +464,29 @@ function frame(now) {
   Object.values(others).forEach(o => {
     const px = o.rx, py = o.ry;
     o.rx += (o.x - o.rx) * k; o.ry += (o.y - o.ry) * k;
-    const mx = o.rx - px, my = o.ry - py, moving = Math.abs(mx) + Math.abs(my) > .2;
-    if (moving) o.dir = turn(o.dir, Math.atan2(mx, my), .25);
-    const q = to3(o.rx, o.ry); o.mesh.position.set(q.x, 0, q.z); o.mesh.rotation.y = o.dir;
-    AV.animate(o.mesh, t, moving);
+    const vx = (o.rx - px) / U / Math.max(dt, .001), vz = (o.ry - py) / U / Math.max(dt, .001);
+    o.sp = (o.sp || 0) + (Math.hypot(vx, vz) - (o.sp || 0)) * Math.min(1, dt * 8);
+    const prev = o.dir; o.dir = turn(o.dir, o.face !== undefined && (o.pose === 'sit' || o.sp < 1.2 || true) ? o.face : Math.atan2(vx, vz), 1 - Math.exp(-dt * 9));
+    let dd = o.dir - prev; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
+    const q = to3(o.rx, o.ry); o.mesh.position.set(q.x, o.pose === 'sit' ? Math.max(0, (o.sy || .5) - .41) : 0, q.z); o.mesh.rotation.y = o.dir;
+    AV.update(o.mesh, dt, { speed: o.sp < .2 ? 0 : o.sp, turn: dd / Math.max(dt, .001), pose: o.pose });
     if (o.room === room) label('p' + o.id, `${esc(o.name)} · 🪙${o.coins}`, { x: q.x, y: 2.15, z: q.z }, '', 20);
   });
   // personal fijo mira al jugador
   (world.npcs[room] || []).forEach(n => {
     let tgt = n.rot;
     if (me && me.room === room && joined) { const dx = me.x - n.mesh.position.x, dz = me.z - n.mesh.position.z; if (dx * dx + dz * dz < 100) tgt = Math.atan2(dx, dz); }
-    n.mesh.rotation.y = turn(n.mesh.rotation.y, tgt, .06); AV.animate(n.mesh, t, false);
+    const before = n.mesh.rotation.y; n.mesh.rotation.y = turn(before, tgt, .06); AV.update(n.mesh, dt, { speed: 0, turn: (n.mesh.rotation.y - before) / Math.max(dt, .001) });
   });
   world.liftOpen += ((me && me.room === 'main' && Math.hypot(me.x, me.z) < world.spots.door.r + 1.5 ? 1 : (transitioning ? 1 : 0)) - world.liftOpen) * Math.min(1, dt * 3);
   world.update(t, dt, camera, room);
   // cámara
   if (me && joined && !PROJ) {
-    camera.position.set(me.x, 1.65 + (me.moving ? Math.sin(me.bob) * .035 : 0), me.z);
-    camera.rotation.set(me.pitch, me.yaw, 0, 'YXZ');
+    updateCamera(dt, t);
     updatePrompt();
     CFG.tables.forEach(tb => { if (room !== 'main') return; const st = tableState[tb.id] || {}; label('t' + tb.id, `${tb.emoji} <b>${tb.name}</b> · ` + (st.status === 'playing' ? `🔴 EN JUEGO (${st.playing})` : `👥 ${st.count || 0}/${CFG.minPlayers}`), { x: tb.p.x, y: 2.6, z: tb.p.z }, 'tbl', 22); });
   } else {      // cámara cinematográfica (antes de entrar / modo proyector)
+    if (me && me.mesh) me.mesh.visible = false; if (hands) hands.group.visible = false;
     const a = t * .07, r = 23;
     camera.position.set(Math.cos(a) * r, 6.5 + Math.sin(t * .13) * 2.5, Math.sin(a) * r); camera.lookAt(0, 6.2, 0);
   }
@@ -423,12 +525,12 @@ function drawPreview(t) {
     r.setPixelRatio(Math.min(2, devicePixelRatio || 1)); r.outputEncoding = T.sRGBEncoding;
     const s = new T.Scene(); s.add(new T.HemisphereLight(0xffffff, 0x6a4a8a, 2.2));
     const d = new T.DirectionalLight(0xffffff, 1.6); d.position.set(2, 4, 5); s.add(d);
-    const c = new T.PerspectiveCamera(32, 1, .1, 50); c.position.set(0, 1.15, 4.6); c.lookAt(0, .95, 0);
+    const c = new T.PerspectiveCamera(30, 1, .1, 50); c.position.set(0, 1.28, 2.7); c.lookAt(0, 1.22, 0);
     const a = AV.create(myData.look, { seed: socket.id }); s.add(a);
     pv = { r, s, c, a };
   }
   pv.r.setSize(96, 96, false);
-  AV.setLook(pv.a, myData.look); pv.a.rotation.y = Math.sin(t) * .7; AV.animate(pv.a, t, false);
+  AV.setLook(pv.a, myData.look); pv.a.rotation.y = Math.sin(t) * .6; AV.update(pv.a, .016, { speed: 0 });
   pv.r.render(pv.s, pv.c);
 }
 
@@ -447,7 +549,8 @@ let phTab = 'wallet';
 function togglePhone(force) {
   const p = $('phone'), on = force ?? !p.classList.contains('on');
   if (on && (busy || transitioning || $('game').classList.contains('on'))) return;
-  p.classList.toggle('on', on); if (on) { try { document.exitPointerLock(); } catch (e) {} renderPhone(); SFX.open(); }
+  p.classList.toggle('on', on); if (me) { me.phoneOn = on; setPose(); sendMove(true); }
+  if (on) { try { document.exitPointerLock(); } catch (e) {} renderPhone(); SFX.open(); }
 }
 $('phClose').onclick = () => togglePhone(false);
 $('phNav').querySelectorAll('button').forEach(b => b.onclick = () => { phTab = b.dataset.t; renderPhone(); });
@@ -549,14 +652,50 @@ socket.on('game:end', r => {
   $('backBtn').onclick = () => close('game');
 });
 
+// ---------- Código QR para unirse (URL pública real del juego) ----------
+let shareUrl = null;
+async function getShareUrl() {
+  if (shareUrl) return shareUrl;
+  let base = '', local = false;
+  try { const j = await (await fetch('/public-url')).json(); base = j.url; local = j.local; } catch (e) {}
+  if (!base) base = /^(localhost|127\.|10\.|192\.168\.)/.test(location.hostname) ? 'https://casino-uab.onrender.com' : location.origin;
+  // Si algún día hay salas privadas (?sala=ID), el enlace compartido lleva la sala actual
+  const sala = new URLSearchParams(location.search).get('sala');
+  shareUrl = { url: base + (sala ? '/?sala=' + encodeURIComponent(sala) : ''), local, sala };
+  return shareUrl;
+}
+let qrDone = '';
+async function openQR() {
+  const { url, local, sala } = await getShareUrl();
+  $('qrUrl').textContent = url;
+  $('qrNote').textContent = sala ? `Enlace de la sala «${sala}»` : local ? 'Estás en modo local: se comparte la dirección pública del casino.' : '';
+  if (qrDone !== url) {
+    qrDone = url; $('qrBox').innerHTML = '';
+    if (window.QRCode) new QRCode($('qrBox'), { text: url, width: 200, height: 200, colorDark: '#12082a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+    else $('qrBox').innerHTML = '<small style="color:#333;text-align:center;padding:10px">No se pudo cargar el generador de QR.<br>Comparte el enlace de abajo.</small>';
+  }
+  $('qrCopy').textContent = '📋 Copiar enlace'; open('qrModal'); SFX.open();
+}
+async function copyShare() {
+  const { url } = await getShareUrl(); let ok = false;
+  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {
+    try { const ta = document.createElement('textarea'); ta.value = url; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch (e2) {}
+  }
+  if (!ok) { try { const r = document.createRange(); r.selectNodeContents($('qrUrl')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (e) {} }   // lo deja seleccionado para copiarlo a mano
+  $('qrCopy').textContent = ok ? '✅ ¡Enlace copiado!' : '⚠️ Cópialo a mano'; if (ok) SFX.coin(); toast(ok ? 'Enlace copiado' : 'No se pudo copiar automáticamente');
+  setTimeout(() => { $('qrCopy').textContent = '📋 Copiar enlace'; }, 2200);
+}
+$('qrBtn').onclick = () => openQR(); $('qrCopy').onclick = copyShare; $('qrClose').onclick = $('qrX').onclick = () => close('qrModal');
+$('qrModal').addEventListener('pointerdown', e => { if (e.target === $('qrModal')) close('qrModal'); });
+
 // ---------- Modo proyector ----------
 function renderProj(players) {
   let side = $('projSide');
   if (!side) {
     side = document.createElement('div'); side.id = 'projSide';
-    side.innerHTML = `<h3>¡ENTRA YA!</h3><div id="qr"></div><p style="margin:6px 0;font-weight:700">${location.host}</p><h3>💰 MÁS RICOS</h3><ol id="rich"></ol>`;
+    side.innerHTML = `<h3>¡ENTRA YA!</h3><div id="qr"></div><p id="qrHost" style="margin:6px 0;font-weight:700">…</p><h3>💰 MÁS RICOS</h3><ol id="rich"></ol>`;
     document.body.appendChild(side);
-    if (window.QRCode) new QRCode($('qr'), { text: location.origin, width: 170, height: 170 });
+    getShareUrl().then(({ url }) => { $('qrHost').textContent = url.replace(/^https?:\/\//, ''); if (window.QRCode) new QRCode($('qr'), { text: url, width: 170, height: 170 }); });
   }
   $('rich').innerHTML = [...players].sort((a, b) => b.coins - a.coins).slice(0, 8).map(p => `<li>${esc(p.name)} · 🪙 ${p.coins}</li>`).join('');
 }
