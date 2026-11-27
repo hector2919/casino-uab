@@ -247,6 +247,20 @@ io.on('connection', socket => {
     Object.keys(A).forEach(id => sock(id)?.emit('arena:hit', { shooter: socket.id, target: d.target, head: !!d.head, killed, hp: tg.hp, ...names }));
   });
 
+  // Casino clásico: apuestas contra la banca (blackjack, ruleta, póquer, billar, bingo)
+  socket.on('classic:bet', (bet, ack) => {
+    const p = players[socket.id]; bet = Math.floor(+bet);
+    if (!p || !(bet >= 1 && bet <= 200) || p.pending) return ack && ack(false);
+    if (p.coins < bet) { socket.emit('toast', 'No tienes monedas suficientes 💸'); return ack && ack(false); }
+    p.coins -= bet; p.pending = bet; sendMe(socket.id); ack && ack(true);
+  });
+  socket.on('classic:settle', d => {
+    const p = players[socket.id]; if (!p || !p.pending) return;
+    const mult = Math.max(0, Math.min(50, +(d && d.mult) || 0)), win = Math.floor(p.pending * mult);
+    p.coins += win; p.pending = 0; sendMe(socket.id);
+    if (mult >= 2) feed(`🎰 ${p.name} gana ${win} 🪙 en ${String(d.game || 'el casino clásico').slice(0, 20)}`);
+  });
+
   // Tienda: comprar o equipar/quitar
   socket.on('shop', key => {
     const p = players[socket.id], item = SHOP[key]; if (!p || !item) return;

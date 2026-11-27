@@ -313,7 +313,7 @@ function findInteract() {
   if (me.room === 'classic') {
     const ex = world.spots.classic.exit;
     if (Math.hypot(me.x - ex.x, me.z - ex.z) < 4.2) return { key: 'exit', icon: '🚪', txt: 'Volver a la sala principal', act: () => goRoom('main') };
-    for (const st of world.classicStations || []) if (Math.hypot(me.x - st.x, me.z - st.z) < st.r) return { key: 'c-' + st.id, icon: st.emoji, txt: st.name, sub: st.desc, act: () => toast(`${st.emoji} ${st.name}: ${st.soon}`) };
+    for (const st of world.classicStations || []) if (Math.hypot(me.x - st.x, me.z - st.z) < st.r) return { key: 'c-' + st.id, icon: st.emoji, txt: st.name, sub: st.desc, act: () => (window.CLASSIC && CLASSIC[st.id.replace(/\d+$/, '')]) ? CLASSIC.open(st.id.replace(/\d+$/, ''), st) : toast(`${st.emoji} ${st.name}: ${st.soon}`) };
     return null;
   }
   if (Math.hypot(me.x, me.z) < world.spots.door.r) return { key: 'lift', icon: '🛗', txt: 'Subir al Casino Clásico', sub: 'Blackjack · Póquer · Billar · Bingo · Ruleta', act: () => goRoom('classic') };

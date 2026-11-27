@@ -203,3 +203,23 @@ button.gold:disabled { filter: grayscale(1) brightness(.6); }
 #aFire { position: absolute; right: 24px; bottom: 40px; width: 90px; height: 90px; border-radius: 50%; font-size: 2.4rem; background: #ff006ecc; box-shadow: 0 0 20px #ff006e; }
 #aFire:active { transform: scale(.92); }
 .ahelp { position: absolute; bottom: 8px; left: 0; right: 120px; text-align: center; font-size: .72rem; opacity: .75; pointer-events: none; text-shadow: 0 1px 2px #000; }
+/* Casino clásico */
+.bets { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.bets button { background: #000a; color: #fff; border: 1px solid var(--gold2, #e9a800); padding: 8px 12px; border-radius: 10px; font-weight: 800; }
+.bets button.on { background: #ffd166; color: #2a0610; }
+.ccard { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; height: 54px; margin: 2px; padding: 0 4px; background: #fff; color: #111; border-radius: 6px; font-weight: 900; font-size: 1.1rem; box-shadow: 0 2px 6px #0008; cursor: pointer; }
+.ccard.red { color: #c1121f; } .ccard.back { background: #7b2dff; color: #fff; }
+.ccard.big { min-width: 50px; height: 72px; font-size: 1.3rem; } .ccard.hold { outline: 4px solid #ffd166; transform: translateY(-8px); }
+.row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.cres { font-family: Bungee, sans-serif; font-size: 1.3rem; text-align: center; padding: 10px; border-radius: 12px; background: #000a; }
+.cres.w { color: #2dc653; } .cres.l { color: #ff4d5a; }
+.opts3 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.opts3 button { padding: 12px; border-radius: 10px; font-weight: 800; color: #fff; background: #2a1650; border: 1px solid #ffd16655; }
+.wheel { font-family: Bungee, sans-serif; font-size: 3.4rem; color: #ffd166; text-shadow: 0 0 20px #ffb703; min-height: 70px; }
+.pbar { position: relative; width: 100%; height: 34px; background: #3a0a14; border-radius: 17px; overflow: hidden; border: 2px solid #ffd166; }
+.pz { position: absolute; left: 38%; width: 24%; top: 0; bottom: 0; background: #2dc653aa; } .pz2 { position: absolute; left: 47%; width: 6%; top: 0; bottom: 0; background: #ffd166; }
+.pc { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; background: #fff; box-shadow: 0 0 8px #fff; left: 0; }
+.bcard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 220px; }
+.bcard span { background: #fff; color: #111; font-weight: 900; font-size: 1.4rem; text-align: center; padding: 10px 0; border-radius: 8px; }
+.bcard span.hit { background: #ff2bd6; color: #fff; box-shadow: 0 0 12px #ff2bd6; }
+.ghostBtn { background: transparent; color: #fff; border: 1px solid #fff5; padding: 8px 14px; border-radius: 10px; margin-top: 6px; }
