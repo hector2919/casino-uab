@@ -250,7 +250,8 @@ io.on('connection', socket => {
   // Casino clásico: apuestas contra la banca (blackjack, ruleta, póquer, billar, bingo)
   socket.on('classic:bet', (bet, ack) => {
     const p = players[socket.id]; bet = Math.floor(+bet);
-    if (!p || !(bet >= 1 && bet <= 200) || p.pending) return ack && ack(false);
+    if (!p || !(bet >= 1 && bet <= 200)) return ack && ack(false);
+    p.pending = 0;   // una partida abandonada a medias se da por perdida
     if (p.coins < bet) { socket.emit('toast', 'No tienes monedas suficientes 💸'); return ack && ack(false); }
     p.coins -= bet; p.pending = bet; sendMe(socket.id); ack && ack(true);
   });

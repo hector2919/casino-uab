@@ -83,7 +83,7 @@ const CLASSIC = (() => {
         const ok = typeof choice === 'number' ? n === choice
           : choice === 'rojo' ? col === 'rojo' : choice === 'negro' ? col === 'negro' : choice === 'par' ? n && n % 2 === 0 : choice === 'impar' ? n % 2 === 1 : choice === 'bajo' ? n >= 1 && n <= 18 : n >= 19;
         settle('Ruleta', ok ? (typeof choice === 'number' ? 36 : 2) : 0, el, ok ? `🎉 ¡Sale el ${n} ${col}!` : `Sale el ${n} ${col}`);
-        el.insertAdjacentHTML('beforeend', `<button class="gold" id="again">Otra tirada</button>`); g('again').onclick = () => ruleta(el);
+        el.insertAdjacentHTML('beforeend', `<button class="gold" id="again">Otra tirada</button>`); if (g('again')) g('again').onclick = () => ruleta(el);
       };
     });
     el.querySelectorAll('.opts3 button').forEach(b => b.onclick = () => spin(b.dataset.c));
@@ -142,6 +142,7 @@ const CLASSIC = (() => {
       el.innerHTML = `<div class="bcard">${nums.map(n => `<span id="b${n}">${n}</span>`).join('')}</div><div class="wheel" id="ball">…</div><p id="bl"></p>`;
       let i = 0, hits = 0;
       const iv = setInterval(() => {
+        if (!g('ball')) return clearInterval(iv);
         const n = pool[i++]; g('ball').textContent = n; sfx('tick');
         if (nums.includes(n)) { hits++; g('b' + n).classList.add('hit'); }
         g('bl').textContent = `Bola ${i}/15 · ${hits} aciertos`;
@@ -149,7 +150,7 @@ const CLASSIC = (() => {
           clearInterval(iv);
           const mult = hits === 9 ? 20 : hits === 8 ? 5 : hits === 7 ? 2 : hits >= 5 ? 1 : 0;
           settle('Bingo', mult, el, hits === 9 ? '🎉 ¡¡BINGO!!' : `${hits} aciertos`);
-          el.insertAdjacentHTML('beforeend', `<button class="gold" id="again">Otro cartón</button>`); g('again').onclick = () => bingo(el);
+          el.insertAdjacentHTML('beforeend', `<button class="gold" id="again">Otro cartón</button>`); if (g('again')) g('again').onclick = () => bingo(el);
         }
       }, 450);
     });
