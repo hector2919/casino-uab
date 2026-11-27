@@ -15,7 +15,7 @@
 <section id="join" class="overlay on">
   <div class="card intro">
     <div class="logo">CASINO<span>UAB</span></div>
-    <p class="tag">🎰 4 mesas · minijuegos en tiempo real · gana monedas · personaliza tu avatar</p>
+    <p class="tag">🎰 6 mesas · minijuegos en tiempo real · gana monedas · personaliza tu avatar</p>
     <input id="name" maxlength="14" placeholder="Tu nombre de jugador" autocomplete="off">
     <button id="joinBtn" class="gold">Entrar al casino</button>
     <p class="hint">Toca el suelo para moverte. Ve a una mesa para jugar y a la tienda para comprar.</p>
@@ -29,7 +29,7 @@
     <div id="feed"></div>
     <div class="pill" id="online">👥 0</div>
   </div>
-  <div id="stage"><canvas id="cv"></canvas></div>
+  <div id="stage"><canvas id="cv"></canvas><div id="labels"></div></div>
   <div id="action"></div>
 </div>
 
@@ -54,11 +54,23 @@
   </div>
 </section>
 
+<!-- ARCADE DE COMPAÑEROS -->
+<section id="arcade" class="overlay">
+  <div class="card">
+    <button class="x" data-close="arcade" style="position:relative;float:right">✕</button>
+    <h2 style="font-family:Bungee;font-weight:400;color:#4cc9f0">🕹️ ARCADE</h2>
+    <p style="opacity:.8">Juegos creados por otros grupos del hackatón</p>
+    <div id="arcadeList"></div>
+  </div>
+</section>
+<div id="frameWrap"><header><b id="frameTitle"></b><a id="frameOpen" target="_blank" rel="noopener">Abrir aparte ↗</a><button id="frameClose">✕ Volver al casino</button></header><iframe id="frame" allow="autoplay; fullscreen"></iframe></div>
+
 <div id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="avatar.js"></script>
+<script src="/lib/three.min.js"></script>
+<script src="avatar3d.js"></script>
 <script src="games.js"></script>
 <script src="main.js"></script>
 </body>

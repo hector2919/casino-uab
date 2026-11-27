@@ -60,4 +60,35 @@ const GAMES = {
     timer(29000, end);
     show();
   },
+
+  // 🧠 Memoria: mira la secuencia de 6 colores y repítela
+  memoria(el, p, done, timer) {
+    const cols = ['#e63946', '#2a9d8f', '#ffd166', '#4361ee'];
+    let i = 0, over = false, t0 = 0, input = false;
+    el.innerHTML = `<p id="h">👀 Mira la secuencia…</p><div class="simon">${cols.map((c, k) => `<button data-k="${k}" style="background:${c}"></button>`).join('')}</div><p id="prog"></p>`;
+    const btns = [...el.querySelectorAll('.simon button')];
+    const flash = (k, ms = 380) => { btns[k].classList.add('lit'); setTimeout(() => btns[k].classList.remove('lit'), ms); };
+    p.seq.forEach((k, j) => setTimeout(() => flash(k), 600 + j * 650));
+    setTimeout(() => { input = true; t0 = performance.now(); el.querySelector('#h').textContent = '👉 ¡Tu turno! Repite la secuencia'; }, 600 + p.seq.length * 650);
+    const end = () => { if (over) return; over = true; el.querySelector('#h').textContent = `${i}/6 aciertos · Esperando al resto…`; done({ c: i, ms: Math.round(performance.now() - (t0 || performance.now())) }); };
+    btns.forEach(b => b.addEventListener('pointerdown', e => {
+      e.preventDefault(); if (!input || over) return;
+      const k = +b.dataset.k; flash(k, 150);
+      if (k === p.seq[i]) { i++; el.querySelector('#prog').textContent = '✅'.repeat(i); if (i === p.seq.length) end(); }
+      else { b.style.outline = '4px solid #fff'; end(); }
+    }));
+    timer(24000, end);
+  },
+
+  // 🎯 Dianas: toca las 10 dianas lo antes posible
+  dianas(el, p, done, timer) {
+    let i = 0, over = false; const t0 = performance.now();
+    el.innerHTML = `<p id="h">🎯 0/10</p><div class="field"><button class="target">🎯</button></div>`;
+    const tg = el.querySelector('.target');
+    const place = () => { const [x, y] = p.pos[i]; tg.style.left = x + '%'; tg.style.top = y + '%'; };
+    const end = () => { if (over) return; over = true; tg.remove(); el.querySelector('#h').textContent = `${i}/10 en ${((performance.now() - t0) / 1000).toFixed(1).replace('.', ',')} s · Esperando al resto…`; done({ h: i, ms: Math.round(performance.now() - t0) }); };
+    tg.addEventListener('pointerdown', e => { e.preventDefault(); if (over) return; i++; el.querySelector('#h').textContent = `🎯 ${i}/10`; if (i >= 10) end(); else place(); });
+    place();
+    timer(19000, end);
+  },
 };

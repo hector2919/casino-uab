@@ -84,3 +84,22 @@ body.proj #feed { font-size: 1.1rem; height: 2.6em; }
 #projSide h3 { font-family: Bungee, sans-serif; color: var(--gold); font-weight: 400; margin: 6px 0; }
 #projSide #qr { background: #fff; padding: 8px; border-radius: 10px; display: inline-block; }
 #projSide ol { text-align: left; padding-left: 22px; font-size: .95rem; }
+.simon { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 300px; }
+.simon button { aspect-ratio: 1; border-radius: 20px; opacity: .45; transition: opacity .1s, transform .1s; box-shadow: 0 6px 0 #0008; }
+.simon button.lit { opacity: 1; transform: scale(1.06); box-shadow: 0 0 30px #fff; }
+.field { position: relative; width: 100%; flex: 1; min-height: 320px; background: radial-gradient(#1f8a55, #0b3d24); border-radius: 18px; border: 3px solid var(--gold); overflow: hidden; }
+.target { position: absolute; width: 18%; aspect-ratio: 1; font-size: 2.6rem; background: none; padding: 0; animation: pop .2s; }
+.howto { background: #000a; border: 1px solid var(--gold2); border-radius: 14px; padding: 14px; font-size: 1.05rem; line-height: 1.4; text-align: left; }
+.ready { font-family: Bungee, sans-serif; font-size: 1.1rem; color: var(--gold); }
+#arcadeList { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+#arcadeList a { display: flex; align-items: center; gap: 12px; background: #000a; border: 1px solid var(--gold2); border-radius: 12px; padding: 12px; color: #fff; text-decoration: none; text-align: left; }
+#arcadeList a b { font-size: 1.05rem; } #arcadeList a span.e { font-size: 2rem; }
+#frameWrap { position: fixed; inset: 0; z-index: 30; background: #000; display: none; flex-direction: column; }
+#frameWrap.on { display: flex; }
+#frameWrap header { display: flex; gap: 8px; padding: 8px; background: #2a0610; border-bottom: 2px solid var(--gold2); align-items: center; }
+#frameWrap header b { flex: 1; color: var(--gold); }
+#frameWrap header a, #frameWrap header button { background: var(--gold); color: #2a0610; padding: 8px 12px; border-radius: 10px; font-weight: 800; text-decoration: none; font-size: .9rem; }
+#frameWrap iframe { flex: 1; border: 0; width: 100%; background: #fff; }
+.lbl3d { position: absolute; transform: translate(-50%, -100%); pointer-events: none; white-space: nowrap; font-weight: 800; font-size: 12px; padding: 2px 7px; border-radius: 6px; background: #000b; color: #fff; }
+.lbl3d.me { background: #ffd166; color: #2a0610; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }

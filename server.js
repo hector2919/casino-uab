@@ -8,6 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 app.use(express.static('public'));
+app.use('/lib', express.static(__dirname + '/node_modules/three/build'));   // Three.js para el 3D
 
 // ---------- Configuración ----------
 const W = 1000, H = 1000;                       // tamaño del mundo (el cliente lo escala)
@@ -17,12 +18,28 @@ const ZONE = 120;                               // radio de cada mesa / tienda
 const PRIZES = [50, 30, 20, 10];                // monedas según posición (resto: 5)
 const SHOP_POS = { x: 500, y: 520 };
 
+const INTRO = 10000;                            // ms de instrucciones + cuenta atrás antes de cada juego
 const TABLES = [
-  { id: 'reflejos', name: 'Semáforo',       emoji: '🚦', x: 210, y: 300, color: '#e63946', desc: 'Pulsa cuando se ponga verde', dur: 8000 },
-  { id: 'clicks',   name: 'Machacabotones', emoji: '👊', x: 790, y: 300, color: '#f4a261', desc: 'Pulsa más veces que nadie en 5 s', dur: 5500 },
-  { id: 'stop',     name: 'Stop 7,77',      emoji: '⏱️', x: 210, y: 740, color: '#4cc9f0', desc: 'Para el reloj en 7,77 s… a ciegas', dur: 12500 },
-  { id: 'calculo',  name: 'Cálculo rápido', emoji: '🧮', x: 790, y: 740, color: '#b5179e', desc: '5 operaciones, gana el más rápido', dur: 30000 },
+  { id: 'reflejos', name: 'Semáforo',       emoji: '🚦', x: 180, y: 280, color: '#e63946', dur: 8000,
+    desc: 'Pulsa cuando se ponga verde',
+    howto: 'La pantalla estará en ROJO. Cuando cambie a VERDE, toca lo más rápido que puedas. Si tocas en rojo quedas último.' },
+  { id: 'clicks',   name: 'Machacabotones', emoji: '👊', x: 500, y: 250, color: '#f4a261', dur: 5500,
+    desc: 'Pulsa más veces que nadie en 5 s',
+    howto: 'Tienes 5 segundos. Machaca el botón dorado tantas veces como puedas. Gana quien más pulse.' },
+  { id: 'stop',     name: 'Stop 7,77',      emoji: '⏱️', x: 820, y: 280, color: '#4cc9f0', dur: 12500,
+    desc: 'Para el reloj en 7,77 s… a ciegas',
+    howto: 'Un reloj empieza a contar. A los 3 segundos se oculta. Pulsa STOP cuando creas que marca 7,77 s. Gana el más cercano.' },
+  { id: 'calculo',  name: 'Cálculo rápido', emoji: '🧮', x: 180, y: 760, color: '#b5179e', dur: 30000,
+    desc: '5 operaciones, gana el más rápido',
+    howto: 'Aparecen 5 operaciones con 4 respuestas. Elige la correcta. Gana quien acierte más; si empatáis, el más rápido.' },
+  { id: 'memoria',  name: 'Memoria',        emoji: '🧠', x: 500, y: 760, color: '#06d6a0', dur: 25000,
+    desc: 'Repite la secuencia de colores',
+    howto: 'Se iluminarán 6 colores en orden. Memorízalos y repítelos tocando los botones. Gana quien acierte más seguidos; desempata el tiempo.' },
+  { id: 'dianas',   name: 'Dianas',         emoji: '🎯', x: 820, y: 760, color: '#ffd166', dur: 20000,
+    desc: 'Toca 10 dianas lo antes posible',
+    howto: 'Irán apareciendo dianas en sitios distintos. Tócalas una a una. Gana quien haga las 10 en menos tiempo.' },
 ];
+const ARCADE_POS = { x: 150, y: 520 };
 
 // Tienda: cada artículo ocupa un "hueco" del personaje (slot)
 const SHOP = {
@@ -90,6 +107,8 @@ function makeParams(id) {
       return { q: `${a} ${op} ${b}`, a: ans, opts: [...opts].sort(() => Math.random() - 0.5) };
     }) };
   }
+  if (id === 'memoria') return { seq: Array.from({ length: 6 }, () => Math.floor(Math.random() * 4)) };
+  if (id === 'dianas') return { pos: Array.from({ length: 10 }, () => [Math.round(rnd(8, 82)), Math.round(rnd(8, 82))]) };
   return {};
 }
 
@@ -99,6 +118,8 @@ function score(id, v) {
   if (id === 'reflejos') return v < 0 ? { key: 1e9, txt: '¡Demasiado pronto!' } : { key: v, txt: `${Math.round(v)} ms` };
   if (id === 'clicks')   { const c = Math.min(100, Math.round(v)); return { key: -c, txt: `${c} pulsaciones` }; }
   if (id === 'stop')     return { key: Math.abs(v - 7770), txt: `${(v / 1000).toFixed(2).replace('.', ',')} s` };
+  if (id === 'memoria')  { const c = Math.min(6, v.c | 0), ms = +v.ms || 99999; return { key: -c * 1e6 + ms, txt: `${c}/6 en ${(ms / 1000).toFixed(1).replace('.', ',')} s` }; }
+  if (id === 'dianas')   { const h = Math.min(10, v.h | 0), ms = +v.ms || 99999; return { key: (10 - h) * 1e6 + ms, txt: `${h}/10 en ${(ms / 1000).toFixed(1).replace('.', ',')} s` }; }
   if (id === 'calculo')  { const c = Math.min(5, v.c | 0), ms = +v.ms || 99999; return { key: -c * 1e6 + ms, txt: `${c}/5 en ${(ms / 1000).toFixed(1).replace('.', ',')} s` }; }
 }
 
@@ -112,10 +133,10 @@ function startTable(t, starterId) {
   const params = makeParams(t.id);
   ps.forEach(p => {
     p.busy = t.id;
-    sock(p.id)?.emit('game:start', { table: t.id, name: t.name, emoji: t.emoji, desc: t.desc, params, rivals: ps.map(x => x.name) });
+    sock(p.id)?.emit('game:start', { table: t.id, name: t.name, emoji: t.emoji, desc: t.desc, howto: t.howto, intro: INTRO, params, rivals: ps.map(x => x.name) });
   });
   feed(`${t.emoji} Empieza ${t.name} con ${ps.map(p => p.name).join(', ')}`);
-  st.timer = setTimeout(() => finishTable(t), 3000 + t.dur + 3000);   // cuenta atrás + juego + margen
+  st.timer = setTimeout(() => finishTable(t), INTRO + t.dur + 3000);   // instrucciones + juego + margen
 }
 
 function finishTable(t) {
@@ -138,11 +159,11 @@ function finishTable(t) {
 
 // ---------- Conexiones ----------
 io.on('connection', socket => {
-  socket.emit('init', { W, H, tables: TABLES, shop: SHOP, shopPos: SHOP_POS, zone: ZONE, prizes: PRIZES, minPlayers: MIN_PLAYERS });
+  socket.emit('init', { W, H, tables: TABLES, shop: SHOP, shopPos: SHOP_POS, arcadePos: ARCADE_POS, zone: ZONE, prizes: PRIZES, minPlayers: MIN_PLAYERS });
 
   socket.on('join', name => {
     name = String(name || '').trim().slice(0, 14) || 'Anónimo';
-    players[socket.id] = { id: socket.id, name, x: rnd(420, 580), y: rnd(880, 940), coins: START_COINS, owned: [], look: { ...DEFAULT_LOOK }, busy: null };
+    players[socket.id] = { id: socket.id, name, x: rnd(420, 580), y: rnd(900, 950), coins: START_COINS, owned: [], look: { ...DEFAULT_LOOK }, busy: null };
     sendMe(socket.id);
     feed(`👋 ${name} ha entrado al casino`);
   });
@@ -150,7 +171,7 @@ io.on('connection', socket => {
   socket.on('move', pos => {
     const p = players[socket.id]; if (!p || p.busy || !pos) return;
     p.x = Math.max(25, Math.min(W - 25, +pos.x || 0));
-    p.y = Math.max(140, Math.min(H - 25, +pos.y || 0));
+    p.y = Math.max(40, Math.min(H - 25, +pos.y || 0));
   });
 
   socket.on('table:start', id => { const t = TABLES.find(x => x.id === id); if (t) startTable(t, socket.id); });

@@ -2,7 +2,7 @@
 
 Juego multijugador online en tiempo real para el hackatón de *Tecnologies Intel·ligents i Arquitectura d'Empresa* (UAB).
 
-Cada jugador entra desde su móvil, mueve su avatar por un casino y va a una de las **4 mesas** para jugar contra los que estén allí:
+Cada jugador entra desde su móvil, mueve su avatar 3D (estilo bloques) por un casino en 3D y va a una de las **6 mesas** para jugar contra los que estén allí:
 
 | Mesa | Cómo se gana |
 |---|---|
@@ -10,6 +10,12 @@ Cada jugador entra desde su móvil, mueve su avatar por un casino y va a una de 
 | 👊 Machacabotones | Más pulsaciones en 5 segundos |
 | ⏱️ Stop 7,77 | Parar el reloj lo más cerca de 7,77 s (se oculta a los 3 s) |
 | 🧮 Cálculo rápido | Más aciertos en 5 operaciones; desempata el tiempo |
+| 🧠 Memoria | Repetir una secuencia de 6 colores |
+| 🎯 Dianas | Tocar 10 dianas en el menor tiempo |
+
+Antes de cada partida hay 10 s con las instrucciones y una cuenta atrás.
+
+**Arcade**: zona con los juegos de otros grupos. Para añadir uno, edita `public/arcade.json` con su nombre, autor, emoji y URL pública.
 
 Premios por posición: 🥇 50 · 🥈 30 · 🥉 20 · 4º 10 · resto 5 monedas. Con las monedas se compran en la **tienda** colores, gorros, complementos, mascotas y efectos para el avatar (todos empiezan con la misma skin gris).
 
@@ -20,10 +26,10 @@ Modo proyector: abre `/?pantalla` en el ordenador de clase para ver la sala ente
 ```
  Móviles (navegador)                         Render (Node.js)
  ┌──────────────────────┐   WebSocket   ┌──────────────────────────────┐
- │ index.html + canvas  │◄────────────►│ server.js                    │
+ │ index.html + Three.js│◄────────────►│ server.js                    │
  │ main.js  (sala, UI)  │  Socket.IO   │  · Express sirve /public     │
- │ games.js (4 juegos)  │              │  · Estado: jugadores, mesas, │
- │ avatar.js (skins)    │              │    monedas, tienda           │
+ │ games.js (6 juegos)  │              │  · Estado: jugadores, mesas, │
+ │ avatar3d.js (skins)  │              │    monedas, tienda           │
  └──────────────────────┘              │  · Difunde el mundo 15 Hz    │
                                        └──────────────────────────────┘
 ```
