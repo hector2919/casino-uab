@@ -23,7 +23,7 @@ function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add
 const open = id => { $(id).classList.add('on'); try { document.exitPointerLock(); } catch (e) {} };
 const close = id => $(id).classList.remove('on');
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => close(b.dataset.close));
-const uiOpen = () => ['join', 'shop', 'barMenu', 'game', 'arcade'].some(i => $(i).classList.contains('on')) || $('frameWrap').classList.contains('on') || $('phone').classList.contains('on');
+const uiOpen = () => ['join', 'shop', 'barMenu', 'game', 'arcade', 'qrModal'].some(i => $(i).classList.contains('on')) || $('frameWrap').classList.contains('on') || $('phone').classList.contains('on');
 document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button')) SFX.click(); }, true);
 
 // ---------- Escena, render y calidad ----------
@@ -168,7 +168,7 @@ addEventListener('pointercancel', e => { if (dragLook && dragLook.id === e.point
 addEventListener('keydown', e => {
   if (document.activeElement.tagName === 'INPUT') return;
   const k = e.key.toLowerCase();
-  if (k === 'escape') { ['shop', 'barMenu', 'arcade'].forEach(close); if ($('phone').classList.contains('on')) togglePhone(false); return; }
+  if (k === 'escape') { ['shop', 'barMenu', 'arcade', 'qrModal'].forEach(close); if ($('phone').classList.contains('on')) togglePhone(false); return; }
   if (!joined || transitioning) return;
   if (k === 't') { togglePhone(); return; }
   if (k === 'v' && !uiOpen()) { toggleView(); return; }
@@ -647,14 +647,50 @@ socket.on('game:end', r => {
   $('backBtn').onclick = () => close('game');
 });
 
+// ---------- Código QR para unirse (URL pública real del juego) ----------
+let shareUrl = null;
+async function getShareUrl() {
+  if (shareUrl) return shareUrl;
+  let base = '', local = false;
+  try { const j = await (await fetch('/public-url')).json(); base = j.url; local = j.local; } catch (e) {}
+  if (!base) base = /^(localhost|127\.|10\.|192\.168\.)/.test(location.hostname) ? 'https://casino-uab.onrender.com' : location.origin;
+  // Si algún día hay salas privadas (?sala=ID), el enlace compartido lleva la sala actual
+  const sala = new URLSearchParams(location.search).get('sala');
+  shareUrl = { url: base + (sala ? '/?sala=' + encodeURIComponent(sala) : ''), local, sala };
+  return shareUrl;
+}
+let qrDone = '';
+async function openQR() {
+  const { url, local, sala } = await getShareUrl();
+  $('qrUrl').textContent = url;
+  $('qrNote').textContent = sala ? `Enlace de la sala «${sala}»` : local ? 'Estás en modo local: se comparte la dirección pública del casino.' : '';
+  if (qrDone !== url) {
+    qrDone = url; $('qrBox').innerHTML = '';
+    if (window.QRCode) new QRCode($('qrBox'), { text: url, width: 200, height: 200, colorDark: '#12082a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+    else $('qrBox').innerHTML = '<small style="color:#333;text-align:center;padding:10px">No se pudo cargar el generador de QR.<br>Comparte el enlace de abajo.</small>';
+  }
+  $('qrCopy').textContent = '📋 Copiar enlace'; open('qrModal'); SFX.open();
+}
+async function copyShare() {
+  const { url } = await getShareUrl(); let ok = false;
+  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {
+    try { const ta = document.createElement('textarea'); ta.value = url; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch (e2) {}
+  }
+  if (!ok) { try { const r = document.createRange(); r.selectNodeContents($('qrUrl')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (e) {} }   // lo deja seleccionado para copiarlo a mano
+  $('qrCopy').textContent = ok ? '✅ ¡Enlace copiado!' : '⚠️ Cópialo a mano'; if (ok) SFX.coin(); toast(ok ? 'Enlace copiado' : 'No se pudo copiar automáticamente');
+  setTimeout(() => { $('qrCopy').textContent = '📋 Copiar enlace'; }, 2200);
+}
+$('qrBtn').onclick = () => openQR(); $('qrCopy').onclick = copyShare; $('qrClose').onclick = $('qrX').onclick = () => close('qrModal');
+$('qrModal').addEventListener('pointerdown', e => { if (e.target === $('qrModal')) close('qrModal'); });
+
 // ---------- Modo proyector ----------
 function renderProj(players) {
   let side = $('projSide');
   if (!side) {
     side = document.createElement('div'); side.id = 'projSide';
-    side.innerHTML = `<h3>¡ENTRA YA!</h3><div id="qr"></div><p style="margin:6px 0;font-weight:700">${location.host}</p><h3>💰 MÁS RICOS</h3><ol id="rich"></ol>`;
+    side.innerHTML = `<h3>¡ENTRA YA!</h3><div id="qr"></div><p id="qrHost" style="margin:6px 0;font-weight:700">…</p><h3>💰 MÁS RICOS</h3><ol id="rich"></ol>`;
     document.body.appendChild(side);
-    if (window.QRCode) new QRCode($('qr'), { text: location.origin, width: 170, height: 170 });
+    getShareUrl().then(({ url }) => { $('qrHost').textContent = url.replace(/^https?:\/\//, ''); if (window.QRCode) new QRCode($('qr'), { text: url, width: 170, height: 170 }); });
   }
   $('rich').innerHTML = [...players].sort((a, b) => b.coins - a.coins).slice(0, 8).map(p => `<li>${esc(p.name)} · 🪙 ${p.coins}</li>`).join('');
 }

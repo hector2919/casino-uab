@@ -7,7 +7,19 @@ const { Server } = require('socket.io');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+app.set('trust proxy', true);                   // detrás del proxy de Render (HTTPS)
 app.use(express.static('public'));
+
+// URL pública del juego para el código QR: PUBLIC_URL (si se define) > RENDER_EXTERNAL_URL (la pone Render) > la URL con la que
+// se ha abierto la web, salvo que sea localhost o una red privada (entonces se usa la dirección publicada del casino).
+const DEFAULT_PUBLIC_URL = 'https://casino-uab.onrender.com';
+const PRIVATE_HOST = /^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|\[?::1|.*\.local$)/i;
+app.get('/public-url', (req, res) => {
+  const env = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL;
+  let url = env ? env.replace(/\/+$/, '') : '';
+  if (!url) { const host = req.get('host') || ''; url = PRIVATE_HOST.test(host.split(':')[0]) ? DEFAULT_PUBLIC_URL : `${req.protocol}://${host}`; }
+  res.json({ url, local: !env && PRIVATE_HOST.test((req.get('host') || '').split(':')[0]) });
+});
 app.use('/lib', express.static(__dirname + '/node_modules/three/build'));   // Three.js para el 3D
 app.use('/jsm', express.static(__dirname + '/node_modules/three/examples/jsm')); // efectos (bloom, reflejos)
 
