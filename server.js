@@ -1,0 +1,189 @@
+// 🎰 CASINO UAB — sala multijugador con 4 mesas de minijuegos
+// Backend: Node.js + Express (sirve el frontend) + Socket.IO (WebSockets en tiempo real)
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+app.use(express.static('public'));
+
+// ---------- Configuración ----------
+const W = 1000, H = 1000;                       // tamaño del mundo (el cliente lo escala)
+const START_COINS = 50;
+const MIN_PLAYERS = Number(process.env.MIN_PLAYERS || 2);
+const ZONE = 120;                               // radio de cada mesa / tienda
+const PRIZES = [50, 30, 20, 10];                // monedas según posición (resto: 5)
+const SHOP_POS = { x: 500, y: 520 };
+
+const TABLES = [
+  { id: 'reflejos', name: 'Semáforo',       emoji: '🚦', x: 210, y: 300, color: '#e63946', desc: 'Pulsa cuando se ponga verde', dur: 8000 },
+  { id: 'clicks',   name: 'Machacabotones', emoji: '👊', x: 790, y: 300, color: '#f4a261', desc: 'Pulsa más veces que nadie en 5 s', dur: 5500 },
+  { id: 'stop',     name: 'Stop 7,77',      emoji: '⏱️', x: 210, y: 740, color: '#4cc9f0', desc: 'Para el reloj en 7,77 s… a ciegas', dur: 12500 },
+  { id: 'calculo',  name: 'Cálculo rápido', emoji: '🧮', x: 790, y: 740, color: '#b5179e', desc: '5 operaciones, gana el más rápido', dur: 30000 },
+];
+
+// Tienda: cada artículo ocupa un "hueco" del personaje (slot)
+const SHOP = {
+  // Colores de piel
+  c_rojo:   { slot: 'color', name: 'Rojo pasión', value: '#e63946', price: 20 },
+  c_verde:  { slot: 'color', name: 'Verde tapete', value: '#2a9d8f', price: 20 },
+  c_rosa:   { slot: 'color', name: 'Rosa neón',   value: '#ff4ecd', price: 40 },
+  c_negro:  { slot: 'color', name: 'Negro mafia', value: '#1b1b1b', price: 50 },
+  c_oro:    { slot: 'color', name: 'Oro puro',    value: '#ffd166', price: 90 },
+  c_arco:   { slot: 'color', name: 'Arcoíris',    value: 'rainbow', price: 200 },
+  // Sombreros
+  h_gorra:  { slot: 'hat', name: 'Gorra',         value: '🧢', price: 25 },
+  h_fiesta: { slot: 'hat', name: 'Gorro fiesta',  value: '🎉', price: 30 },
+  h_vaq:    { slot: 'hat', name: 'Vaquero',       value: '🤠', price: 45 },
+  h_chist:  { slot: 'hat', name: 'Chistera',      value: '🎩', price: 70 },
+  h_corona: { slot: 'hat', name: 'Corona VIP',    value: '👑', price: 250 },
+  // Cara
+  f_gafas:  { slot: 'face', name: 'Gafas de sol', value: '🕶️', price: 30 },
+  f_bigote: { slot: 'face', name: 'Disfraz',      value: '🥸', price: 40 },
+  f_mascara:{ slot: 'face', name: 'Antifaz',      value: '🎭', price: 60 },
+  // Mascotas
+  p_perro:  { slot: 'pet', name: 'Perrito',       value: '🐶', price: 60 },
+  p_gato:   { slot: 'pet', name: 'Gatito',        value: '🐱', price: 60 },
+  p_loro:   { slot: 'pet', name: 'Loro',          value: '🦜', price: 90 },
+  p_dragon: { slot: 'pet', name: 'Dragón',        value: '🐉', price: 300 },
+  // Efectos
+  x_brillo: { slot: 'fx', name: 'Brillos',        value: 'sparkle', price: 80 },
+  x_aura:   { slot: 'fx', name: 'Aura dorada',    value: 'aura', price: 120 },
+  x_fuego:  { slot: 'fx', name: 'En llamas',      value: 'fire', price: 160 },
+};
+const DEFAULT_LOOK = { color: '#8d99ae', hat: '', face: '', pet: '', fx: '' };
+
+// ---------- Estado ----------
+const players = {};   // id -> { id, name, x, y, coins, owned:[], look, busy }
+const tables = {};    // id -> { status, players:[], results:{}, timer }
+TABLES.forEach(t => tables[t.id] = { status: 'idle', players: [], results: {} });
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+const sock = id => io.sockets.sockets.get(id);
+const feed = msg => io.emit('feed', msg);
+const pub = p => ({ id: p.id, name: p.name, x: p.x, y: p.y, coins: p.coins, look: p.look, busy: !!p.busy });
+const sendMe = id => { const p = players[id]; if (p) sock(id)?.emit('me', { coins: p.coins, owned: p.owned, look: p.look }); };
+const inZone = t => Object.values(players).filter(p => !p.busy && dist(p, t) < ZONE);
+
+// Envía el estado del mundo 15 veces por segundo
+setInterval(() => {
+  io.emit('world', {
+    players: Object.values(players).map(pub),
+    tables: TABLES.map(t => ({ id: t.id, status: tables[t.id].status, count: inZone(t).length, playing: tables[t.id].players.length })),
+  });
+}, 66);
+
+// ---------- Minijuegos ----------
+function makeParams(id) {
+  if (id === 'reflejos') return { delay: Math.round(rnd(2000, 5000)) };
+  if (id === 'calculo') {
+    return { qs: Array.from({ length: 5 }, () => {
+      const op = ['+', '-', '×'][Math.floor(Math.random() * 3)];
+      let a = Math.floor(rnd(2, op === '×' ? 10 : 50)), b = Math.floor(rnd(2, op === '×' ? 10 : 50));
+      if (op === '-' && b > a) [a, b] = [b, a];
+      const ans = op === '+' ? a + b : op === '-' ? a - b : a * b;
+      const opts = new Set([ans]);
+      while (opts.size < 4) opts.add(ans + Math.floor(rnd(-10, 11)) || ans + 11);
+      return { q: `${a} ${op} ${b}`, a: ans, opts: [...opts].sort(() => Math.random() - 0.5) };
+    }) };
+  }
+  return {};
+}
+
+// Convierte el resultado de cada jugador en { key (menor = mejor), txt }
+function score(id, v) {
+  if (v === undefined || v === null) return { key: 1e12, txt: 'No jugó' };
+  if (id === 'reflejos') return v < 0 ? { key: 1e9, txt: '¡Demasiado pronto!' } : { key: v, txt: `${Math.round(v)} ms` };
+  if (id === 'clicks')   { const c = Math.min(100, Math.round(v)); return { key: -c, txt: `${c} pulsaciones` }; }
+  if (id === 'stop')     return { key: Math.abs(v - 7770), txt: `${(v / 1000).toFixed(2).replace('.', ',')} s` };
+  if (id === 'calculo')  { const c = Math.min(5, v.c | 0), ms = +v.ms || 99999; return { key: -c * 1e6 + ms, txt: `${c}/5 en ${(ms / 1000).toFixed(1).replace('.', ',')} s` }; }
+}
+
+function startTable(t, starterId) {
+  const st = tables[t.id];
+  if (st.status !== 'idle') return;
+  const ps = inZone(t);
+  if (!ps.find(p => p.id === starterId)) return;
+  if (ps.length < MIN_PLAYERS) return sock(starterId)?.emit('toast', `Hacen falta ${MIN_PLAYERS} jugadores en la mesa`);
+  st.status = 'playing'; st.players = ps.map(p => p.id); st.results = {};
+  const params = makeParams(t.id);
+  ps.forEach(p => {
+    p.busy = t.id;
+    sock(p.id)?.emit('game:start', { table: t.id, name: t.name, emoji: t.emoji, desc: t.desc, params, rivals: ps.map(x => x.name) });
+  });
+  feed(`${t.emoji} Empieza ${t.name} con ${ps.map(p => p.name).join(', ')}`);
+  st.timer = setTimeout(() => finishTable(t), 3000 + t.dur + 3000);   // cuenta atrás + juego + margen
+}
+
+function finishTable(t) {
+  const st = tables[t.id];
+  if (st.status !== 'playing') return;
+  clearTimeout(st.timer);
+  const ranking = st.players.filter(id => players[id])
+    .map(id => ({ id, name: players[id].name, ...score(t.id, st.results[id]) }))
+    .sort((a, b) => a.key - b.key)
+    .map((r, i) => {
+      const prize = PRIZES[i] ?? 5;
+      players[r.id].coins += prize;
+      players[r.id].busy = null;
+      return { id: r.id, name: r.name, txt: r.txt, prize, pos: i + 1 };
+    });
+  ranking.forEach(r => { sock(r.id)?.emit('game:end', { name: t.name, emoji: t.emoji, ranking }); sendMe(r.id); });
+  if (ranking[0]) feed(`🏆 ${ranking[0].name} gana en ${t.name} (+${ranking[0].prize} 🪙)`);
+  st.status = 'idle'; st.players = []; st.results = {};
+}
+
+// ---------- Conexiones ----------
+io.on('connection', socket => {
+  socket.emit('init', { W, H, tables: TABLES, shop: SHOP, shopPos: SHOP_POS, zone: ZONE, prizes: PRIZES, minPlayers: MIN_PLAYERS });
+
+  socket.on('join', name => {
+    name = String(name || '').trim().slice(0, 14) || 'Anónimo';
+    players[socket.id] = { id: socket.id, name, x: rnd(420, 580), y: rnd(880, 940), coins: START_COINS, owned: [], look: { ...DEFAULT_LOOK }, busy: null };
+    sendMe(socket.id);
+    feed(`👋 ${name} ha entrado al casino`);
+  });
+
+  socket.on('move', pos => {
+    const p = players[socket.id]; if (!p || p.busy || !pos) return;
+    p.x = Math.max(25, Math.min(W - 25, +pos.x || 0));
+    p.y = Math.max(140, Math.min(H - 25, +pos.y || 0));
+  });
+
+  socket.on('table:start', id => { const t = TABLES.find(x => x.id === id); if (t) startTable(t, socket.id); });
+
+  socket.on('game:result', v => {
+    const p = players[socket.id]; if (!p || !p.busy) return;
+    const t = TABLES.find(x => x.id === p.busy), st = tables[p.busy];
+    if (st.status !== 'playing' || socket.id in st.results) return;
+    st.results[socket.id] = v;
+    if (st.players.every(id => id in st.results || !players[id])) finishTable(t);
+  });
+
+  // Tienda: comprar o equipar/quitar
+  socket.on('shop', key => {
+    const p = players[socket.id], item = SHOP[key]; if (!p || !item) return;
+    if (dist(p, SHOP_POS) > ZONE + 30) return socket.emit('toast', 'Ve a la tienda para comprar');
+    if (!p.owned.includes(key)) {
+      if (p.coins < item.price) return socket.emit('toast', 'No tienes monedas suficientes 💸');
+      p.coins -= item.price; p.owned.push(key);
+      feed(`🛍️ ${p.name} ha comprado ${item.name}`);
+    }
+    p.look[item.slot] = p.look[item.slot] === item.value ? DEFAULT_LOOK[item.slot] : item.value;
+    sendMe(socket.id);
+  });
+
+  socket.on('disconnect', () => {
+    const p = players[socket.id]; if (!p) return;
+    delete players[socket.id];
+    if (p.busy) { const t = TABLES.find(x => x.id === p.busy), st = tables[p.busy];
+      if (st.players.every(id => id in st.results || !players[id])) finishTable(t); }
+    feed(`🚪 ${p.name} ha salido`);
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🎰 Casino escuchando en el puerto ${PORT}`));

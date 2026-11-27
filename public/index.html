@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#120509">
+<title>Casino UAB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ENTRADA -->
+<section id="join" class="overlay on">
+  <div class="card intro">
+    <div class="logo">CASINO<span>UAB</span></div>
+    <p class="tag">🎰 4 mesas · minijuegos en tiempo real · gana monedas · personaliza tu avatar</p>
+    <input id="name" maxlength="14" placeholder="Tu nombre de jugador" autocomplete="off">
+    <button id="joinBtn" class="gold">Entrar al casino</button>
+    <p class="hint">Toca el suelo para moverte. Ve a una mesa para jugar y a la tienda para comprar.</p>
+  </div>
+</section>
+
+<!-- JUEGO -->
+<div id="app">
+  <div id="topbar">
+    <div class="pill" id="coins">🪙 0</div>
+    <div id="feed"></div>
+    <div class="pill" id="online">👥 0</div>
+  </div>
+  <div id="stage"><canvas id="cv"></canvas></div>
+  <div id="action"></div>
+</div>
+
+<!-- TIENDA -->
+<section id="shop" class="overlay">
+  <div class="card wide">
+    <div class="shopHead">
+      <canvas id="preview" width="160" height="160"></canvas>
+      <div><h2>🛍️ Tienda VIP</h2><div class="pill big" id="shopCoins">🪙 0</div></div>
+      <button class="x" data-close="shop">✕</button>
+    </div>
+    <div id="tabs"></div>
+    <div id="items"></div>
+  </div>
+</section>
+
+<!-- MINIJUEGO -->
+<section id="game" class="overlay">
+  <div class="card game">
+    <div class="gHead"><span id="gTitle"></span><span id="gTimer"></span></div>
+    <div id="gBody"></div>
+  </div>
+</section>
+
+<div id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="avatar.js"></script>
+<script src="games.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

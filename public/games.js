@@ -1,0 +1,63 @@
+// Los 4 minijuegos. Cada uno pinta su interfaz en `el` y llama a done(resultado) una sola vez.
+const GAMES = {
+  // 🚦 Semáforo: pulsa al ponerse verde (pulsar en rojo = descalificado)
+  reflejos(el, p, done, timer) {
+    let t0 = 0, over = false;
+    el.innerHTML = `<div class="pad red" id="pad">ESPERA…<small>Pulsa SOLO cuando se ponga verde</small></div>`;
+    const pad = el.querySelector('#pad');
+    const tGo = setTimeout(() => { pad.className = 'pad green'; pad.innerHTML = '¡¡YA!!'; t0 = performance.now();
+      setTimeout(() => finish(9999), 2500); }, p.delay);
+    const finish = v => { if (over) return; over = true; clearTimeout(tGo); done(v); };
+    pad.addEventListener('pointerdown', e => {
+      e.preventDefault(); if (over) return;
+      if (!t0) { pad.className = 'pad grey'; pad.innerHTML = '¡DEMASIADO PRONTO!<small>😬</small>'; finish(-1); }
+      else { const ms = Math.round(performance.now() - t0); pad.innerHTML = `${ms} ms<small>Esperando al resto…</small>`; finish(ms); }
+    });
+  },
+
+  // 👊 Machacabotones: máximo de pulsaciones en 5 segundos
+  clicks(el, p, done, timer) {
+    let n = 0, over = false;
+    el.innerHTML = `<div class="num" id="n">0</div><button class="big-btn" id="b">👊</button><p>¡Machaca el botón!</p>`;
+    const nEl = el.querySelector('#n');
+    el.querySelector('#b').addEventListener('pointerdown', e => { e.preventDefault(); if (!over) { n++; nEl.textContent = n; } });
+    timer(5000, () => { over = true; el.querySelector('p').textContent = 'Esperando al resto…'; done(n); });
+  },
+
+  // ⏱️ Stop 7,77: el reloj se oculta a los 3 s; párlo lo más cerca de 7,77 s
+  stop(el, p, done, timer) {
+    const t0 = performance.now(); let over = false;
+    el.innerHTML = `<p>Objetivo: <b style="color:#ffd166">7,77 s</b></p><div class="num" id="n">0,00</div><button class="big-btn" id="b">✋</button><p id="h">El reloj desaparece a los 3 s…</p>`;
+    const nEl = el.querySelector('#n');
+    const iv = setInterval(() => {
+      const s = (performance.now() - t0) / 1000;
+      nEl.textContent = s < 3 ? s.toFixed(2).replace('.', ',') : '?,??';
+      if (s > 12) stopIt();
+    }, 30);
+    const stopIt = () => {
+      if (over) return; over = true; clearInterval(iv);
+      const ms = Math.round(performance.now() - t0);
+      nEl.textContent = (ms / 1000).toFixed(2).replace('.', ',');
+      el.querySelector('#h').textContent = `Te has desviado ${(Math.abs(ms - 7770) / 1000).toFixed(2).replace('.', ',')} s`;
+      done(ms);
+    };
+    el.querySelector('#b').addEventListener('pointerdown', e => { e.preventDefault(); stopIt(); });
+  },
+
+  // 🧮 Cálculo rápido: 5 operaciones, cuenta aciertos y tiempo
+  calculo(el, p, done, timer) {
+    const t0 = performance.now(); let i = 0, ok = 0, over = false;
+    const show = () => {
+      const q = p.qs[i];
+      el.innerHTML = `<p>Pregunta ${i + 1}/5 · ✅ ${ok}</p><div class="q">${q.q}</div><div class="opts">${q.opts.map(o => `<button>${o}</button>`).join('')}</div>`;
+      el.querySelectorAll('.opts button').forEach(b => b.addEventListener('pointerdown', e => {
+        e.preventDefault(); if (over) return;
+        if (+b.textContent === q.a) ok++;
+        if (++i < 5) show(); else end();
+      }));
+    };
+    const end = () => { if (over) return; over = true; el.innerHTML = `<div class="num">${ok}/5</div><p>Esperando al resto…</p>`; done({ c: ok, ms: Math.round(performance.now() - t0) }); };
+    timer(29000, end);
+    show();
+  },
+};
