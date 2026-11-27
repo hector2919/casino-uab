@@ -86,7 +86,7 @@ World.buildClassic = function (world, CFG) {
   const putCard = (parent, x, y, z, ry, face, red) => { const m = mesh(new T.PlaneGeometry(.3, .42), new T.MeshStandardMaterial({ map: card(face, red), roughness: .6 }), x, y, z, parent); m.rotation.set(-Math.PI / 2, 0, ry); };
   const sign = (text, color, w, h, sub, x, y, z, ry = 0) => { const s = signPlane(text, color, w, h, sub); s.position.set(x, y, z); s.rotation.y = ry; g.add(s); return s; };
   const bsign = (...a) => { const m = sign(...a); billboards.push(m); return m; };
-  const dealer = (x, z, ry, seed) => { const d = AV.createStaff('dealer', seed); d.position.set(x, 0, z); d.rotation.y = ry; g.add(d); npcs.push({ mesh: d, x, z, rot: ry, look: 'dealer' }); };
+  const dealer = (x, z, ry, seed) => { const door = /^puerta/.test(seed), d = AV.createStaff(door ? 'doorman' : (seed === 'poker' || seed === 'bj1' ? 'croupier' : 'dealer'), seed); d.userData.deal = !door; d.position.set(x, 0, z); d.rotation.y = ry; g.add(d); npcs.push({ mesh: d, x, z, rot: ry, look: 'dealer' }); };
   const station = (id, x, z, r, emoji, name, desc, soon) => { stations.push({ id, x, z, r, emoji, name, desc, soon }); map.push({ x, z, e: emoji }); };
   const halo = (x, z, color) => { const l = new T.PointLight(color, 1.3, 13); l.position.set(x, 3.2, z); g.add(l); };
 

@@ -118,9 +118,10 @@ socket.on('world', w => {
   w.players.forEach(p => {
     seen[p.id] = 1;
     if (p.id === socket.id) {
-      if (!me) { const q = to3(p.x, p.y); me = { x: q.x, z: q.z, yaw: 0, pitch: 0, room: 'main', moving: false, mesh: null, bob: 0, step: 0 }; }
+      if (!me) { const q = to3(p.x, p.y); me = { x: q.x, z: q.z, yaw: 0, pitch: 0, face: Math.PI, pose: '', sy: 0, room: 'main', moving: false, mesh: null, bob: 0, step: 0 }; }
       me.name = p.name; me.coins = p.coins; busy = p.busy; return;
     }
+    if (p.look) p.look.__seed = p.id;
     let o = others[p.id];
     if (!o) { o = others[p.id] = { ...p, rx: p.x, ry: p.y, dir: 0, mesh: AV.create(p.look, { seed: p.id }) }; scene.add(o.mesh); }
     Object.assign(o, p); AV.setLook(o.mesh, p.look); o.mesh.visible = o.room === room;
@@ -205,7 +206,7 @@ let lastSent = 0;
 function sendMove(force) {
   const now = performance.now();
   if (!force && now - lastSent < 60) return; lastSent = now;
-  socket.emit('move', { x: me.x * U + 500, y: me.z * U + 500, room: me.room });
+  socket.emit('move', { x: me.x * U + 500, y: me.z * U + 500, room: me.room, face: +me.face.toFixed(2), pose: me.pose || '', sy: me.sy || 0 });
 }
 function updateMe(dt, t) {
   me.moving = false;
@@ -287,8 +288,9 @@ function updateStaff(dt, t) {
     } else if (s.state === 'return') {
       if (walk(s, bp.x - 1.5, bp.z + 2.5, dt, 3) < 1 || s.stuck > 2.5) { s.state = 'patrol'; s.wp = null; s.wait = 1; s.sent = false; AV.carry(s.mesh, null); }
     }
-    const moving = Math.hypot(s.x - s.mesh.position.x, s.z - s.mesh.position.z) > .001;
-    s.mesh.position.set(s.x, 0, s.z); AV.animate(s.mesh, t, moving);
+    const mv = Math.hypot(s.x - s.mesh.position.x, s.z - s.mesh.position.z) / Math.max(dt, .001);
+    s.sp = (s.sp || 0) + (mv - (s.sp || 0)) * Math.min(1, dt * 8);
+    s.mesh.position.set(s.x, 0, s.z); AV.update(s.mesh, dt, { speed: s.sp < .25 ? 0 : s.sp, turn: 0 });
   });
 }
 socket.on('order', o => {
@@ -364,17 +366,19 @@ function frame(now) {
   Object.values(others).forEach(o => {
     const px = o.rx, py = o.ry;
     o.rx += (o.x - o.rx) * k; o.ry += (o.y - o.ry) * k;
-    const mx = o.rx - px, my = o.ry - py, moving = Math.abs(mx) + Math.abs(my) > .2;
-    if (moving) o.dir = turn(o.dir, Math.atan2(mx, my), .25);
-    const q = to3(o.rx, o.ry); o.mesh.position.set(q.x, 0, q.z); o.mesh.rotation.y = o.dir;
-    AV.animate(o.mesh, t, moving);
+    const vx = (o.rx - px) / U / Math.max(dt, .001), vz = (o.ry - py) / U / Math.max(dt, .001);
+    o.sp = (o.sp || 0) + (Math.hypot(vx, vz) - (o.sp || 0)) * Math.min(1, dt * 8);
+    const prev = o.dir; o.dir = turn(o.dir, o.face !== undefined && (o.pose === 'sit' || o.sp < 1.2 || true) ? o.face : Math.atan2(vx, vz), 1 - Math.exp(-dt * 9));
+    let dd = o.dir - prev; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
+    const q = to3(o.rx, o.ry); o.mesh.position.set(q.x, o.pose === 'sit' ? Math.max(0, (o.sy || .5) - .41) : 0, q.z); o.mesh.rotation.y = o.dir;
+    AV.update(o.mesh, dt, { speed: o.sp < .2 ? 0 : o.sp, turn: dd / Math.max(dt, .001), pose: o.pose });
     if (o.room === room) label('p' + o.id, `${esc(o.name)} · 🪙${o.coins}`, { x: q.x, y: 2.15, z: q.z }, '', 20);
   });
   // personal fijo mira al jugador
   (world.npcs[room] || []).forEach(n => {
     let tgt = n.rot;
     if (me && me.room === room && joined) { const dx = me.x - n.mesh.position.x, dz = me.z - n.mesh.position.z; if (dx * dx + dz * dz < 100) tgt = Math.atan2(dx, dz); }
-    n.mesh.rotation.y = turn(n.mesh.rotation.y, tgt, .06); AV.animate(n.mesh, t, false);
+    const before = n.mesh.rotation.y; n.mesh.rotation.y = turn(before, tgt, .06); AV.update(n.mesh, dt, { speed: 0, turn: (n.mesh.rotation.y - before) / Math.max(dt, .001) });
   });
   world.liftOpen += ((me && me.room === 'main' && Math.hypot(me.x, me.z) < world.spots.door.r + 1.5 ? 1 : (transitioning ? 1 : 0)) - world.liftOpen) * Math.min(1, dt * 3);
   world.update(t, dt, camera, room);
@@ -423,12 +427,12 @@ function drawPreview(t) {
     r.setPixelRatio(Math.min(2, devicePixelRatio || 1)); r.outputEncoding = T.sRGBEncoding;
     const s = new T.Scene(); s.add(new T.HemisphereLight(0xffffff, 0x6a4a8a, 2.2));
     const d = new T.DirectionalLight(0xffffff, 1.6); d.position.set(2, 4, 5); s.add(d);
-    const c = new T.PerspectiveCamera(32, 1, .1, 50); c.position.set(0, 1.15, 4.6); c.lookAt(0, .95, 0);
+    const c = new T.PerspectiveCamera(30, 1, .1, 50); c.position.set(0, 1.28, 2.7); c.lookAt(0, 1.22, 0);
     const a = AV.create(myData.look, { seed: socket.id }); s.add(a);
     pv = { r, s, c, a };
   }
   pv.r.setSize(96, 96, false);
-  AV.setLook(pv.a, myData.look); pv.a.rotation.y = Math.sin(t) * .7; AV.animate(pv.a, t, false);
+  AV.setLook(pv.a, myData.look); pv.a.rotation.y = Math.sin(t) * .6; AV.update(pv.a, .016, { speed: 0 });
   pv.r.render(pv.s, pv.c);
 }
 

@@ -422,7 +422,7 @@ const World = (() => {
       for (let k = 0; k < 3; k++) { const a = k * 2.09 + x; mesh(sGeo, std('#8a1034'), Math.cos(a) * 1.15, 0, Math.sin(a) * 1.15, tg); mesh(pGeo, gold, Math.cos(a) * 1.15, 0, Math.sin(a) * 1.15, tg); }
       circle(x, z, .85);
     });
-    const bartender = AV.createStaff('bartender', 'barman'); bartender.position.set(cx - 4.6, 0, cz + 4.6); bartender.rotation.y = -Math.PI / 4; main.add(bartender);
+    const bartender = AV.createStaff('bartender', 'barman'); bartender.userData.deal = true; bartender.position.set(cx - 4.6, 0, cz + 4.6); bartender.rotation.y = -Math.PI / 4; main.add(bartender);
     npcs.main.push({ mesh: bartender, x: cx - 4.6, z: cz + 4.6, rot: -Math.PI / 4, look: 'bartender' });
     const barSpot = { x: cx - 0.707 * (BR + 2.4), z: cz + 0.707 * (BR + 2.4) };
 
@@ -482,7 +482,7 @@ const World = (() => {
     [-1, 1].forEach(s => { mesh(new T.BoxGeometry(2.4, 5, .25), gold, s * 1.3, 2.5, -.2, ent); mesh(new T.PlaneGeometry(2, 4.4), neonMat('#ffe0a0', .55), s * 1.3, 2.5, -.34, ent).rotation.y = Math.PI; });
     mesh(new T.BoxGeometry(5.6, .4, .4), gold, 0, 5.15, -.2, ent);
     const wel = signPlane('BIENVENIDOS', '#e2b04a', 8, 1.5, null); wel.position.set(0, 6.6, -.5); wel.rotation.y = Math.PI; ent.add(wel);
-    [-6, 6].forEach(x => { const dm = AV.createStaff('dealer', 'portero' + x); dm.position.set(x, 0, -2); dm.rotation.y = Math.PI; ent.add(dm); npcs.main.push({ mesh: dm, x, z: HS - 2, rot: Math.PI, look: 'dealer' }); });
+    [-6, 6].forEach(x => { const dm = AV.createStaff('doorman', 'portero' + x); dm.position.set(x, 0, -2); dm.rotation.y = Math.PI; ent.add(dm); npcs.main.push({ mesh: dm, x, z: HS - 2, rot: Math.PI, look: 'doorman' }); });
     anim.main.push(() => {});
 
     // Texturas de relleno del reloj/pantallas se actualizan en update()

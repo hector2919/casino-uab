@@ -102,7 +102,7 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 const sock = id => io.sockets.sockets.get(id);
 const feed = msg => io.emit('feed', msg);
-const pub = p => ({ id: p.id, name: p.name, x: p.x, y: p.y, coins: p.coins, look: p.look, busy: !!p.busy, room: p.room });
+const pub = p => ({ id: p.id, name: p.name, x: p.x, y: p.y, coins: p.coins, look: p.look, busy: !!p.busy, room: p.room, face: p.face || 0, pose: p.pose || '', sy: p.sy || 0 });
 const sendMe = id => { const p = players[id]; if (p) sock(id)?.emit('me', { coins: p.coins, owned: p.owned, look: p.look, inv: p.inv }); };
 const inZone = t => Object.values(players).filter(p => !p.busy && p.room === 'main' && dist(p, t) < ZONE);
 
@@ -209,6 +209,9 @@ io.on('connection', socket => {
     p.x = Math.max(25, Math.min(W - 25, +pos.x || 0));
     p.y = Math.max(40, Math.min(H - 25, +pos.y || 0));
     p.room = pos.room === 'classic' ? 'classic' : 'main';
+    p.face = Math.max(-7, Math.min(7, +pos.face || 0));                      // hacia dónde mira el personaje
+    p.pose = pos.pose === 'sit' || pos.pose === 'phone' ? pos.pose : '';     // sentado / usando el móvil (lo ven todos)
+    p.sy = Math.max(0, Math.min(1.2, +pos.sy || 0));                         // altura del asiento
   });
 
   socket.on('table:start', id => { const t = TABLES.find(x => x.id === id); if (t) startTable(t, socket.id); });
