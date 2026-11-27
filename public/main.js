@@ -401,14 +401,19 @@ let actionKey = '', current = null;
 const sd = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);                           // distancia en unidades del servidor
 function findInteract() {
   if (!me || busy || transitioning) return null;
-  if (me.sitting) return { key: 'stand', icon: '🧍', txt: 'Levantarse', sub: 'O muévete para levantarte', act: standUp };
+  const base = findStation();
+  // Sentado: E abre la mesa (juego, barra…) si la hay a mano; si no, levanta. Moverse también levanta.
+  if (me.sitting) return base ? { ...base, key: 'sat-' + base.key, sub: (base.sub ? base.sub + ' · ' : '') + 'Muévete para levantarte' } : { key: 'stand', icon: '🧍', txt: 'Levantarse', sub: 'O muévete para levantarte', act: standUp };
   const seat = (world.seats[me.room] || []).find(q => Math.hypot(me.x - q.x, me.z - q.z) < 1.15);
-  if (seat) return { key: 'sit', icon: '🪑', txt: 'Sentarse', sub: 'Descansa un momento', act: () => sitDown(seat) };
+  if (seat) return { key: 'sit', icon: '🪑', txt: 'Sentarse', sub: base ? 'Y luego pulsa E para ' + base.txt.toLowerCase() : 'Descansa un momento', act: () => sitDown(seat) };
+  return base;
+}
+function findStation() {
   const mp = { x: me.x * U + 500, y: me.z * U + 500 };
   if (me.room === 'classic') {
     const ex = world.spots.classic.exit;
     if (Math.hypot(me.x - ex.x, me.z - ex.z) < 4.2) return { key: 'exit', icon: '🚪', txt: 'Volver a la sala principal', act: () => goRoom('main') };
-    for (const st of world.classicStations || []) if (Math.hypot(me.x - st.x, me.z - st.z) < st.r) return { key: 'c-' + st.id, icon: st.emoji, txt: st.name, sub: st.desc, act: () => toast(`${st.emoji} ${st.name}: ${st.soon}`) };
+    for (const st of world.classicStations || []) if (Math.hypot(me.x - st.x, me.z - st.z) < st.r) return { key: 'c-' + st.id, icon: st.emoji, txt: st.name, sub: st.desc, act: () => (window.CLASSIC && CLASSIC[st.id.replace(/\d+$/, '')]) ? CLASSIC.open(st.id.replace(/\d+$/, ''), st) : toast(`${st.emoji} ${st.name}: ${st.soon}`) };
     return null;
   }
   if (Math.hypot(me.x, me.z) < world.spots.door.r) return { key: 'lift', icon: '🛗', txt: 'Subir al Casino Clásico', sub: 'Blackjack · Póquer · Billar · Bingo · Ruleta', act: () => goRoom('classic') };

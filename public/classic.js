@@ -112,7 +112,7 @@ World.buildClassic = function (world, CFG) {
     const dp = new T.Vector3(0, 0, 1.2).applyEuler(new T.Euler(0, t.rotation.y, 0));
     dealer(x + dp.x, z + dp.z, t.rotation.y + Math.PI, 'bj' + i);
     circle(x, z, 1.9); halo(x, z, '#ffb36b');
-    station('bj' + i, x, z, 5.8, '🃏', 'Blackjack', 'Mesa con crupier', 'próximamente podrás jugar aquí 🚧');
+    station('bj' + i, x, z, 5.8, '🃏', 'Blackjack', 'Mesa con crupier', '¡Pulsa para jugar!');
     bsign('BLACKJACK', '#e6c25a', 4.6, 1.2, 'mesa ' + (i + 1), x, 5.6, z);
   });
 
@@ -126,7 +126,7 @@ World.buildClassic = function (world, CFG) {
     for (let k = 0; k < 8; k++) { const a = k / 8 * TWO + .4, lx = Math.cos(a) * 3.35, lz = Math.sin(a) * 1.9; chairs.push([px + lx * 1.05, pz + lz * 1.12, Math.atan2(-lx, -lz)]); chipStack(px + lx * .72, 1.0, pz + lz * .72, 3 + k % 3, CH[k % 6]); putCard(t, lx * .5, 1.0, lz * .5, a, ['A♠', '9♦', 'K♣', '7♥'][k % 4], k % 4 === 1 || k % 4 === 3); }
     dealer(px, pz + 2.3, Math.PI, 'poker');
     circle(px - 1.8, pz, 1.3); circle(px, pz, 1.5); circle(px + 1.8, pz, 1.3); halo(px, pz, '#7bffb0');
-    station('poker', px, pz, 6.4, '♠️', 'Póquer', 'Mesa de Texas Hold\'em', 'próximamente podrás jugar aquí 🚧');
+    station('poker', px, pz, 6.4, '♠️', 'Póquer', 'Mesa de Texas Hold\'em', '¡Pulsa para jugar!');
     bsign('PÓQUER', '#6dffb0', 4.6, 1.2, 'Texas Hold\'em', px, 5.8, pz); }
 
   // Ruleta (mesa con la rueda en un extremo)
@@ -145,7 +145,7 @@ World.buildClassic = function (world, CFG) {
     for (let k = 0; k < 9; k++) chipStack(rx + (k % 3 - 1) * .5 - .0, 1.0, rz - 0.4 + Math.floor(k / 3) * .55 - .4, 1 + k % 4, CH[k % 6]);
     dealer(rx - 1.1, rz, Math.PI / 2, 'ruleta');
     circle(rx, rz - 1.5, 1.4); circle(rx, rz, 1.4); circle(rx, rz + 1.5, 1.4); halo(rx + 1, rz, '#ff6a8a');
-    station('ruleta', rx, rz, 6, '🎡', 'Ruleta', 'Ruleta europea', 'próximamente podrás jugar aquí 🚧');
+    station('ruleta', rx, rz, 6, '🎡', 'Ruleta', 'Ruleta europea', '¡Pulsa para jugar!');
     bsign('RULETA', '#ff5a7a', 4, 1.2, 'rojo · negro · pleno', rx - 1, 5.2, rz); }
 
   // Billares (2 mesas, lámpara colgante luminosa)
@@ -162,7 +162,7 @@ World.buildClassic = function (world, CFG) {
     [-1.2, 1.2].forEach(x => mesh(new T.CylinderGeometry(.01, .01, 1.5, 4), gold, x, 4.2, 0, t));
     const lg = new T.PointLight('#fff0c8', 1.1, 12); lg.position.set(bx, 3, bz); g.add(lg);
     circle(bx, bz - 1.3, 1.1); circle(bx, bz, 1.1); circle(bx, bz + 1.3, 1.1);
-    if (i === 0) { station('billar', bx, bz + 4.5, 7.5, '🎱', 'Billar', 'Dos mesas de billar americano', 'próximamente podrás jugar aquí 🚧'); bsign('BILLAR', '#ffe9b0', 3.8, 1.1, 'americano', bx + 1, 5.4, bz + 4.5); }
+    if (i === 0) { station('billar', bx, bz + 4.5, 7.5, '🎱', 'Billar', 'Dos mesas de billar americano', '¡Pulsa para jugar!'); bsign('BILLAR', '#ffe9b0', 3.8, 1.1, 'americano', bx + 1, 5.4, bz + 4.5); }
   });
 
   // Bingo: jaula giratoria, bolas, pantalla grande y mesas con sillas
@@ -186,7 +186,7 @@ World.buildClassic = function (world, CFG) {
       circle(tx, tz, 1.0);
     }
     dealer(bx + 2.2, bz, -Math.PI / 2, 'bingo'); circle(bx, bz, 1.7); halo(bx, bz, '#ffd23f'); halo(-9, 18, '#ff9ad0');
-    station('bingo', bx + 5, bz, 10, '🎲', 'Bingo', 'Pantalla gigante y 6 mesas', 'próximamente podrás jugar aquí 🚧');
+    station('bingo', bx + 5, bz, 10, '🎲', 'Bingo', 'Pantalla gigante y 6 mesas', '¡Pulsa para jugar!');
     bsign('BINGO', '#ffd23f', 3.6, 1.1, '¡línea y bingo!', bx, 5.2, bz); }
   function liveScreenBingo() {
     return world.shared.liveScreen(11, 5, 768, (c, w, h, t) => {

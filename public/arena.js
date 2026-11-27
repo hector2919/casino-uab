@@ -11,29 +11,51 @@ GAMES.arena = function (el, p, done, timer) {
   const cv = wrap.querySelector('canvas');
   const R = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
   R.setPixelRatio(Math.min(1.5, devicePixelRatio || 1)); R.outputEncoding = THREE.sRGBEncoding;
-  const S = new THREE.Scene(); S.background = new THREE.Color(0x87b5e5); S.fog = new THREE.Fog(0x87b5e5, 30, 70);
+  // Arena estilo casino de neón (a juego con la sala principal)
+  const S = new THREE.Scene(); S.background = new THREE.Color(0x07061a); S.fog = new THREE.Fog(0x07061a, 25, 60);
   const cam = new THREE.PerspectiveCamera(75, 1, .05, 120); cam.rotation.order = 'YXZ';
-  S.add(new THREE.HemisphereLight(0xffffff, 0x665544, 1.1));
-  const sunL = new THREE.DirectionalLight(0xffffff, .7); sunL.position.set(10, 20, 5); S.add(sunL);
-
-  // Mapa: suelo, muros y cajas para cubrirse (igual para todos)
+  S.add(new THREE.HemisphereLight(0x9a8cff, 0x1a0b2e, .9));
+  const sunL = new THREE.DirectionalLight(0xffffff, .5); sunL.position.set(10, 20, 5); S.add(sunL);
+  [[-12, -12, 0xff2bd6], [12, 12, 0x00e5ff], [12, -12, 0xffd166], [-12, 12, 0x7b2dff]].forEach(([x, z, c]) => {
+    const l = new THREE.PointLight(c, 1.4, 26); l.position.set(x, 5, z); S.add(l);
+  });
+  // Suelo: baldosas oscuras con líneas de neón
   const tile = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
-    x.fillStyle = '#c9a66b'; x.fillRect(0, 0, 128, 128); x.strokeStyle = '#a8864f'; x.lineWidth = 4; x.strokeRect(0, 0, 128, 128);
-    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(20, 20); t.encoding = THREE.sRGBEncoding; return t; })();
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ map: tile })); floor.rotation.x = -Math.PI / 2; S.add(floor);
+    x.fillStyle = '#14112e'; x.fillRect(0, 0, 128, 128); x.strokeStyle = '#7b2dff'; x.lineWidth = 3; x.shadowColor = '#b06bff'; x.shadowBlur = 8; x.strokeRect(2, 2, 124, 124);
+    x.fillStyle = '#ffd16655'; x.beginPath(); x.arc(64, 64, 4, 0, 7); x.fill();
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(16, 16); t.encoding = THREE.sRGBEncoding; return t; })();
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ map: tile, roughness: .35, metalness: .3 })); floor.rotation.x = -Math.PI / 2; S.add(floor);
+  // Logo en el centro del suelo
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(9, 2.2), new THREE.MeshBasicMaterial({ transparent: true, map: (() => { const c = document.createElement('canvas'); c.width = 512; c.height = 128; const x = c.getContext('2d');
+    x.font = '72px Bungee, Impact, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.shadowColor = '#ff2bd6'; x.shadowBlur = 20; x.fillStyle = '#ffd166'; x.fillText('TIROTEO', 256, 70);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t; })() }));
+  logo.rotation.x = -Math.PI / 2; logo.position.set(0, .02, 6.5); S.add(logo);
   const solids = [];
-  const block = (x, z, w, h, d, color) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color })); m.position.set(x, h / 2, z); S.add(m);
+  const NEON = [0xff2bd6, 0x00e5ff, 0xffd166, 0x7b2dff];
+  const block = (x, z, w, h, d, color, neon) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: .5, metalness: .4 })); m.position.set(x, h / 2, z); S.add(m);
+    if (neon !== undefined) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: neon })); m.add(e); }
     solids.push({ m, x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 });
   };
-  block(0, -20.5, 42, 5, 1, 0x8d6e4a); block(0, 20.5, 42, 5, 1, 0x8d6e4a); block(-20.5, 0, 1, 5, 42, 0x8d6e4a); block(20.5, 0, 1, 5, 42, 0x8d6e4a);
+  // Muros con franja de neón
+  [[0, -20.5, 42, 1], [0, 20.5, 42, 1], [-20.5, 0, 1, 42], [20.5, 0, 1, 42]].forEach(([x, z, w, d], i) => {
+    block(x, z, w, 5, d, 0x1c1240);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(w + .02, .15, d + .02), new THREE.MeshBasicMaterial({ color: NEON[i] })); strip.position.set(x, 3.2, z); S.add(strip);
+    const strip2 = strip.clone(); strip2.position.y = .3; S.add(strip2);
+  });
+  // Coberturas: mesas de juego, cajas de fichas y tragaperras
   [[0, 0, 4, 2.2, 4], [-8, -6, 2, 2.2, 6], [8, 6, 2, 2.2, 6], [-8, 8, 5, 2.2, 2], [8, -8, 5, 2.2, 2], [0, -11, 6, 1.3, 1.2], [0, 11, 6, 1.3, 1.2],
    [-14, 0, 1.5, 1.5, 1.5], [14, 0, 1.5, 1.5, 1.5], [-4, 4, 1.5, 1.5, 1.5], [4, -4, 1.5, 1.5, 1.5]]
-    .forEach(([x, z, w, h, d], i) => block(x, z, w, h, d, i < 7 ? 0xb5651d : 0x6b8e23));
+    .forEach(([x, z, w, h, d], i) => block(x, z, w, h, d, i < 7 ? 0x2a1650 : 0x0f5132, NEON[i % 4]));
+  // Fichas gigantes decorativas sobre la cobertura central
+  [[0, 0], [-1, .8], [1, -.6]].forEach(([dx, dz], i) => {
+    const chip = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, .2, 24), new THREE.MeshStandardMaterial({ color: [0xe63946, 0x111111, 0xffd166][i], emissive: [0x330000, 0, 0x332200][i] }));
+    chip.position.set(dx, 2.3 + i * .2, dz); S.add(chip);
+  });
   // Arma en primera persona
   const gun = new THREE.Group();
   const gm = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: .6, roughness: .4 });
-  const g1 = new THREE.Mesh(new THREE.BoxGeometry(.12, .14, .6), gm); const g2 = new THREE.Mesh(new THREE.BoxGeometry(.1, .22, .12), new THREE.MeshStandardMaterial({ color: 0xff006e }));
+  const g1 = new THREE.Mesh(new THREE.BoxGeometry(.12, .14, .6), gm); const g2 = new THREE.Mesh(new THREE.BoxGeometry(.1, .22, .12), new THREE.MeshStandardMaterial({ color: 0xffd166, metalness: .8, roughness: .3 }));
   g2.position.set(0, -.14, .15); gun.add(g1, g2); gun.scale.setScalar(.55); gun.position.set(.2, -.17, -.42); cam.add(gun); S.add(cam);
   const flash = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffdd55 })); flash.position.set(0, 0, -.35); flash.visible = false; gun.add(flash);
 
@@ -88,13 +110,13 @@ GAMES.arena = function (el, p, done, timer) {
   }
   function shoot() {
     const now = performance.now(); if (!alive || now - lastShot < 220) return; lastShot = now;
-    flash.visible = true; setTimeout(() => flash.visible = false, 50);
+    flash.visible = true; setTimeout(() => flash.visible = false, 50); try { SFX.tick(); } catch (e) {}
     gun.position.z = -.38; setTimeout(() => gun.position.z = -.42, 70);
     ray.setFromCamera({ x: 0, y: 0 }, cam);
     const targets = [...solids.map(b => b.m), ...Object.values(foes).filter(f => f.alive).map(f => f.mesh)];
     const hit = ray.intersectObjects(targets, true)[0];
     const muzzle = new THREE.Vector3(.28, -.2, -.9).applyMatrix4(cam.matrixWorld);
-    tracer(muzzle, hit ? hit.point : ray.ray.at(60, new THREE.Vector3()), 0xffee88);
+    tracer(muzzle, hit ? hit.point : ray.ray.at(60, new THREE.Vector3()), 0x00e5ff);
     if (!hit) return;
     const fid = Object.keys(foes).find(id => { let o = hit.object; while (o) { if (o === foes[id].mesh) return true; o = o.parent; } return false; });
     if (fid) {
@@ -114,6 +136,7 @@ GAMES.arena = function (el, p, done, timer) {
   const onHit = h => {
     const esc2 = s => String(s || '').replace(/[&<>"]/g, '');
     if (h.target === myId) { const d = wrap.querySelector('#aDmg'); d.classList.remove('on'); void d.offsetWidth; d.classList.add('on'); }
+    if (h.shooter === myId && h.killed) { try { SFX.coin(); } catch (e) {} }
     if (h.shooter === myId && !h.killed) { const c = wrap.querySelector('.cross'); c.classList.add('hit'); setTimeout(() => c.classList.remove('hit'), 120); }
     if (h.killed) {
       feed(`<b>${esc2(h.s)}</b> 🔫${h.head ? '🎯' : ''} ${esc2(h.t)}`);
@@ -121,7 +144,7 @@ GAMES.arena = function (el, p, done, timer) {
     }
   };
   const onRespawn = r => { px = r.x; pz = r.z; alive = true; wrap.querySelector('#aDead').classList.remove('on'); };
-  const onFx = fx => { const f = foes[fx.from]; if (f) { const from = f.mesh.position.clone().setY(1.6); const dir = new THREE.Vector3(Math.sin(f.mesh.rotation.y), 0, Math.cos(f.mesh.rotation.y)); tracer(from, from.clone().add(dir.multiplyScalar(30)), 0xff5555); } };
+  const onFx = fx => { const f = foes[fx.from]; if (f) { const from = f.mesh.position.clone().setY(1.6); const dir = new THREE.Vector3(Math.sin(f.mesh.rotation.y), 0, Math.cos(f.mesh.rotation.y)); tracer(from, from.clone().add(dir.multiplyScalar(30)), 0xff2bd6); } };
   socket.on('arena:state', onState); socket.on('arena:hit', onHit); socket.on('arena:respawn', onRespawn); socket.on('arena:fx', onFx);
 
   // Bucle

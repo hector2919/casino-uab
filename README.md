@@ -47,7 +47,7 @@ El casino pasa a verse **en primera persona**, con estética de casino de Las Ve
 |---|---|
 | **Sala principal** | Entrada con alfombra roja · tienda VIP al fondo · bar en la esquina derecha · 6 estaciones de juego (una por minijuego, 7 con el Tiroteo) alrededor · tragaperras, arcade y lounge |
 | **Centro** | Gran estructura con ruleta colgante. Dentro hay un **ascensor** al Casino Clásico |
-| **Casino clásico** | Otra sala (verde, burdeos y dorado): blackjack, póquer, ruleta, billar y bingo, con crupieres, fichas y cartas. *De momento son ambientación (aún no se juegan).* |
+| **Casino clásico** | Otra sala (verde, burdeos y dorado): blackjack, póquer, ruleta, billar y bingo, con crupieres, fichas y cartas. Las mesas son jugables con apuestas de monedas ficticias contra la banca (`classic-games.js`). |
 | **Teléfono** | Tecla **T** / botón 📱: cartera, carta del bar, pedidos, inventario y mapa |
 | **Bar** | Pide en la barra o desde el teléfono. Se cobra con monedas ficticias y un camarero te lleva el pedido |
 

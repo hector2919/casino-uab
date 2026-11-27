@@ -54,7 +54,7 @@ helado: { name: 'Helado', emoji: '🍦', price: 9, kind: 'Postre' },
 ```
 (`kind` puede ser `Bebida`, `Comida` o `Postre`; aparece solo en el menú del teléfono y de la barra.)
 
-**Convertir una mesa clásica en un juego real** → las mesas de `public/classic.js` son solo decoración (`station(...)`). Para hacerlas jugables, añade la mesa en `TABLES` del servidor y sigue los 3 pasos de "Crear un minijuego nuevo".
+**Cambiar un juego del casino clásico** → las mesas están en `public/classic.js` (decoración y zona) y su lógica de apuestas en `public/classic-games.js` (el servidor solo cobra y paga: `classic:bet` / `classic:settle`).
 
 ## 4. Cómo trabajar sin pisarnos
 ```bash
