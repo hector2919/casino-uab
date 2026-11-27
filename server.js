@@ -9,6 +9,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 app.use(express.static('public'));
 app.use('/lib', express.static(__dirname + '/node_modules/three/build'));   // Three.js para el 3D
+app.use('/jsm', express.static(__dirname + '/node_modules/three/examples/jsm')); // efectos (bloom, reflejos)
 
 // ---------- Configuración ----------
 const W = 1000, H = 1000;                       // tamaño del mundo (el cliente lo escala)
@@ -16,34 +17,35 @@ const START_COINS = 50;
 const MIN_PLAYERS = Number(process.env.MIN_PLAYERS || 2);
 const ZONE = 120;                               // radio de cada mesa / tienda
 const PRIZES = [50, 30, 20, 10];                // monedas según posición (resto: 5)
-const SHOP_POS = { x: 500, y: 520 };
+const SHOP_POS = { x: 500, y: 70 };            // tienda al fondo de la sala
+const BAR_POS = { x: 880, y: 120 };             // bar en la esquina derecha del fondo
 
 const INTRO = 10000;                            // ms de instrucciones + cuenta atrás antes de cada juego
 const TABLES = [
-  { id: 'reflejos', name: 'Semáforo',       emoji: '🚦', x: 180, y: 280, color: '#e63946', dur: 8000,
+  { id: 'reflejos', name: 'Semáforo',       emoji: '🚦', x: 335, y: 214, color: '#e63946', dur: 8000,
     desc: 'Pulsa cuando se ponga verde',
     howto: 'La pantalla estará en ROJO. Cuando cambie a VERDE, toca lo más rápido que puedas. Si tocas en rojo quedas último.' },
-  { id: 'clicks',   name: 'Machacabotones', emoji: '👊', x: 500, y: 250, color: '#f4a261', dur: 5500,
+  { id: 'clicks',   name: 'Machacabotones', emoji: '👊', x: 665, y: 214, color: '#f4a261', dur: 5500,
     desc: 'Pulsa más veces que nadie en 5 s',
     howto: 'Tienes 5 segundos. Machaca el botón dorado tantas veces como puedas. Gana quien más pulse.' },
-  { id: 'stop',     name: 'Stop 7,77',      emoji: '⏱️', x: 820, y: 280, color: '#4cc9f0', dur: 12500,
+  { id: 'stop',     name: 'Stop 7,77',      emoji: '⏱️', x: 830, y: 500, color: '#4cc9f0', dur: 12500,
     desc: 'Para el reloj en 7,77 s… a ciegas',
     howto: 'Un reloj empieza a contar. A los 3 segundos se oculta. Pulsa STOP cuando creas que marca 7,77 s. Gana el más cercano.' },
-  { id: 'calculo',  name: 'Cálculo rápido', emoji: '🧮', x: 180, y: 760, color: '#b5179e', dur: 30000,
+  { id: 'calculo',  name: 'Cálculo rápido', emoji: '🧮', x: 170, y: 500, color: '#b5179e', dur: 30000,
     desc: '5 operaciones, gana el más rápido',
     howto: 'Aparecen 5 operaciones con 4 respuestas. Elige la correcta. Gana quien acierte más; si empatáis, el más rápido.' },
-  { id: 'memoria',  name: 'Memoria',        emoji: '🧠', x: 500, y: 760, color: '#06d6a0', dur: 25000,
+  { id: 'memoria',  name: 'Memoria',        emoji: '🧠', x: 335, y: 786, color: '#06d6a0', dur: 25000,
     desc: 'Repite la secuencia de colores',
     howto: 'Se iluminarán 6 colores en orden. Memorízalos y repítelos tocando los botones. Gana quien acierte más seguidos; desempata el tiempo.' },
-  { id: 'dianas',   name: 'Dianas',         emoji: '🎯', x: 820, y: 760, color: '#ffd166', dur: 20000,
+  { id: 'dianas',   name: 'Dianas',         emoji: '🎯', x: 665, y: 786, color: '#ffd166', dur: 20000,
     desc: 'Toca 10 dianas lo antes posible',
     howto: 'Irán apareciendo dianas en sitios distintos. Tócalas una a una. Gana quien haga las 10 en menos tiempo.' },
-  { id: 'arena',    name: 'Tiroteo',        emoji: '🔫', x: 850, y: 520, color: '#ff006e', dur: 60000,
+  { id: 'arena',    name: 'Tiroteo',        emoji: '🔫', x: 905, y: 860, color: '#ff006e', dur: 60000,
     desc: 'Shooter en primera persona: gana quien más bajas haga',
     howto: 'Arena de 60 s con tu propio avatar. Móvil: joystick a la izquierda para moverte, desliza a la derecha para apuntar y pulsa 🔫 para disparar. Ordenador: WASD + ratón (clic para disparar). Tiro a la cabeza = más daño. Si caes, reapareces en 2 s.' },
 ];
 const ARENA_SPAWNS = [[-15, -15], [15, 15], [-15, 15], [15, -15], [0, -16], [0, 16], [-16, 0], [16, 0]];
-const ARCADE_POS = { x: 150, y: 520 };
+const ARCADE_POS = { x: 130, y: 870 };
 
 // Tienda: cada artículo ocupa un "hueco" del personaje (slot)
 const SHOP = {
@@ -74,20 +76,35 @@ const SHOP = {
   x_aura:   { slot: 'fx', name: 'Aura dorada',    value: 'aura', price: 120 },
   x_fuego:  { slot: 'fx', name: 'En llamas',      value: 'fire', price: 160 },
 };
+// Carta del bar: se paga con monedas ficticias
+const BAR = {
+  cola:     { name: 'Cola',          emoji: '🥤', price: 6,  kind: 'Bebida' },
+  cerveza:  { name: 'Cerveza fría',  emoji: '🍺', price: 10, kind: 'Bebida' },
+  mojito:   { name: 'Mojito',        emoji: '🍹', price: 14, kind: 'Bebida' },
+  cocktail: { name: 'Cóctel neón',   emoji: '🍸', price: 20, kind: 'Bebida' },
+  champan:  { name: 'Champán',       emoji: '🥂', price: 40, kind: 'Bebida' },
+  patatas:  { name: 'Patatas',       emoji: '🍟', price: 8,  kind: 'Comida' },
+  nachos:   { name: 'Nachos',        emoji: '🌮', price: 12, kind: 'Comida' },
+  burger:   { name: 'Hamburguesa',   emoji: '🍔', price: 16, kind: 'Comida' },
+  pizza:    { name: 'Pizza',         emoji: '🍕', price: 18, kind: 'Comida' },
+  tarta:    { name: 'Tarta',         emoji: '🍰', price: 14, kind: 'Postre' },
+};
 const DEFAULT_LOOK = { color: '#8d99ae', hat: '', face: '', pet: '', fx: '' };
 
 // ---------- Estado ----------
 const players = {};   // id -> { id, name, x, y, coins, owned:[], look, busy }
 const tables = {};    // id -> { status, players:[], results:{}, timer }
+let orders = [];      // pedidos del bar activos { id, pid, item, to, status }
+let orderSeq = 0;
 TABLES.forEach(t => tables[t.id] = { status: 'idle', players: [], results: {} });
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 const sock = id => io.sockets.sockets.get(id);
 const feed = msg => io.emit('feed', msg);
-const pub = p => ({ id: p.id, name: p.name, x: p.x, y: p.y, coins: p.coins, look: p.look, busy: !!p.busy });
-const sendMe = id => { const p = players[id]; if (p) sock(id)?.emit('me', { coins: p.coins, owned: p.owned, look: p.look }); };
-const inZone = t => Object.values(players).filter(p => !p.busy && dist(p, t) < ZONE);
+const pub = p => ({ id: p.id, name: p.name, x: p.x, y: p.y, coins: p.coins, look: p.look, busy: !!p.busy, room: p.room });
+const sendMe = id => { const p = players[id]; if (p) sock(id)?.emit('me', { coins: p.coins, owned: p.owned, look: p.look, inv: p.inv }); };
+const inZone = t => Object.values(players).filter(p => !p.busy && p.room === 'main' && dist(p, t) < ZONE);
 
 // Envía el estado del mundo 15 veces por segundo
 setInterval(() => {
@@ -178,11 +195,11 @@ setInterval(() => {
 
 // ---------- Conexiones ----------
 io.on('connection', socket => {
-  socket.emit('init', { W, H, tables: TABLES, shop: SHOP, shopPos: SHOP_POS, arcadePos: ARCADE_POS, zone: ZONE, prizes: PRIZES, minPlayers: MIN_PLAYERS });
+  socket.emit('init', { W, H, tables: TABLES, shop: SHOP, shopPos: SHOP_POS, barPos: BAR_POS, bar: BAR, orders, arcadePos: ARCADE_POS, zone: ZONE, prizes: PRIZES, minPlayers: MIN_PLAYERS });
 
   socket.on('join', name => {
     name = String(name || '').trim().slice(0, 14) || 'Anónimo';
-    players[socket.id] = { id: socket.id, name, x: rnd(420, 580), y: rnd(900, 950), coins: START_COINS, owned: [], look: { ...DEFAULT_LOOK }, busy: null };
+    players[socket.id] = { id: socket.id, name, x: rnd(420, 580), y: rnd(900, 950), coins: START_COINS, owned: [], inv: {}, look: { ...DEFAULT_LOOK }, busy: null, room: 'main' };
     sendMe(socket.id);
     feed(`👋 ${name} ha entrado al casino`);
   });
@@ -191,6 +208,7 @@ io.on('connection', socket => {
     const p = players[socket.id]; if (!p || p.busy || !pos) return;
     p.x = Math.max(25, Math.min(W - 25, +pos.x || 0));
     p.y = Math.max(40, Math.min(H - 25, +pos.y || 0));
+    p.room = pos.room === 'classic' ? 'classic' : 'main';
   });
 
   socket.on('table:start', id => { const t = TABLES.find(x => x.id === id); if (t) startTable(t, socket.id); });
@@ -232,7 +250,7 @@ io.on('connection', socket => {
   // Tienda: comprar o equipar/quitar
   socket.on('shop', key => {
     const p = players[socket.id], item = SHOP[key]; if (!p || !item) return;
-    if (dist(p, SHOP_POS) > ZONE + 30) return socket.emit('toast', 'Ve a la tienda para comprar');
+    if (p.room !== 'main' || dist(p, SHOP_POS) > ZONE + 30) return socket.emit('toast', 'Ve a la tienda para comprar');
     if (!p.owned.includes(key)) {
       if (p.coins < item.price) return socket.emit('toast', 'No tienes monedas suficientes 💸');
       p.coins -= item.price; p.owned.push(key);
@@ -242,7 +260,36 @@ io.on('connection', socket => {
     sendMe(socket.id);
   });
 
+  // Bar: pide comida o bebida con monedas ficticias; un camarero la lleva a tu posición
+  const pubOrder = o => ({ id: o.id, pid: o.pid, item: o.item, to: o.to, status: o.status });
+  const deliver = o => {
+    if (o.status === 'delivered' || o.status === 'cancelled') return;
+    o.status = 'delivered';
+    const p = players[o.pid]; if (p) { p.inv[o.item] = (p.inv[o.item] || 0) + 1; sendMe(o.pid); sock(o.pid)?.emit('toast', `${BAR[o.item].emoji} ¡Tu pedido ha llegado! Disfruta`); }
+    io.emit('order', pubOrder(o));
+    setTimeout(() => { orders = orders.filter(x => x.id !== o.id); }, 5000);
+  };
+  socket.on('bar:order', msg => {
+    const p = players[socket.id], it = msg && BAR[msg.item]; if (!p || !it) return;
+    if (orders.filter(o => o.pid === socket.id && o.status !== 'delivered').length >= 3) return socket.emit('toast', 'Ya tienes 3 pedidos en camino');
+    if (p.coins < it.price) return socket.emit('toast', 'No tienes monedas suficientes 💸');
+    p.coins -= it.price;
+    const o = { id: ++orderSeq, pid: socket.id, item: msg.item, to: msg.to === 'bar' ? 'bar' : 'me', status: 'preparing' };
+    orders.push(o); sendMe(socket.id); io.emit('order', pubOrder(o));
+    setTimeout(() => {
+      if (o.status !== 'preparing') return;
+      o.status = 'delivering'; io.emit('order', pubOrder(o));
+      setTimeout(() => deliver(o), 70000);        // por si el camarero no llega
+    }, 3500);
+  });
+  socket.on('order:arrived', id => {
+    const o = orders.find(x => x.id === id);
+    if (o && o.pid === socket.id && o.status === 'delivering') deliver(o);
+  });
+
   socket.on('disconnect', () => {
+    orders.filter(o => o.pid === socket.id && o.status !== 'delivered').forEach(o => { o.status = 'cancelled'; io.emit('order', pubOrder(o)); });
+    orders = orders.filter(o => o.status !== 'cancelled');
     const p = players[socket.id]; if (!p) return;
     delete players[socket.id];
     if (p.busy) { const t = TABLES.find(x => x.id === p.busy), st = tables[p.busy];
