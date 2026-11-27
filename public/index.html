@@ -2,36 +2,50 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#120509">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05030c">
 <title>Casino UAB</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "/lib/three.module.js", "three/addons/": "/jsm/" } }</script>
 </head>
 <body>
+
+<!-- Escena 3D a pantalla completa -->
+<canvas id="cv"></canvas>
+<div id="labels"></div>
 
 <!-- ENTRADA -->
 <section id="join" class="overlay on">
   <div class="card intro">
     <div class="logo">CASINO<span>UAB</span></div>
-    <p class="tag">🎰 6 mesas · minijuegos en tiempo real · gana monedas · personaliza tu avatar</p>
+    <p class="tag">Entra en primera persona · juega con tus compañeros · gana monedas ficticias · pide algo en el bar</p>
     <input id="name" maxlength="14" placeholder="Tu nombre de jugador" autocomplete="off">
     <button id="joinBtn" class="gold">Entrar al casino</button>
-    <p class="hint">Toca el suelo para moverte. Ve a una mesa para jugar y a la tienda para comprar.</p>
+    <p class="hint" id="joinHint">Cargando el casino…</p>
   </div>
 </section>
 
-<!-- JUEGO -->
-<div id="app">
+<!-- HUD -->
+<div id="hud">
   <div id="topbar">
     <div class="pill" id="coins">🪙 0</div>
-    <div id="feed"></div>
     <div class="pill" id="online">👥 0</div>
+    <div class="pill small" id="where">Sala principal</div>
+    <span class="grow"></span>
+    <button class="round" id="sndBtn" title="Sonido">🔊</button>
+    <button class="round" id="qBtn" title="Calidad gráfica">✨</button>
   </div>
-  <div id="stage"><canvas id="cv"></canvas><div id="labels"></div></div>
-  <div id="action"></div>
+  <div id="feed"></div>
+  <div id="cross"></div>
+  <div id="prompt"><span class="key">E</span><span id="promptTxt"></span></div>
+  <button id="useBtn" class="gold">Usar</button>
+  <button id="phoneBtn" title="Teléfono (T)">📱</button>
+  <div id="lockHint">Haz clic en la pantalla para mirar con el ratón · WASD para andar · Shift para correr · E para interactuar · T para el teléfono</div>
+  <div id="joy"><div id="knob"></div></div>
 </div>
+<div id="fade"><div id="fadeTxt"></div></div>
 
 <!-- TIENDA -->
 <section id="shop" class="overlay">
@@ -46,6 +60,16 @@
   </div>
 </section>
 
+<!-- BAR (desde la barra) -->
+<section id="barMenu" class="overlay">
+  <div class="card wide">
+    <button class="x" data-close="barMenu">✕</button>
+    <h2 class="neonTitle" style="color:#ffb703">🍸 BAR UAB</h2>
+    <p class="hint">Pagas con monedas ficticias. Un camarero te lo lleva a la barra.</p>
+    <div id="barItems" class="menu"></div>
+  </div>
+</section>
+
 <!-- MINIJUEGO -->
 <section id="game" class="overlay">
   <div class="card game">
@@ -57,21 +81,55 @@
 <!-- ARCADE DE COMPAÑEROS -->
 <section id="arcade" class="overlay">
   <div class="card">
-    <button class="x" data-close="arcade" style="position:relative;float:right">✕</button>
-    <h2 style="font-family:Bungee;font-weight:400;color:#4cc9f0">🕹️ ARCADE</h2>
-    <p style="opacity:.8">Juegos creados por otros grupos del hackatón</p>
+    <button class="x" data-close="arcade">✕</button>
+    <h2 class="neonTitle" style="color:#2de2ff">🕹️ ARCADE</h2>
+    <p class="hint">Juegos creados por otros grupos del hackatón</p>
     <div id="arcadeList"></div>
   </div>
 </section>
 <div id="frameWrap"><header><b id="frameTitle"></b><a id="frameOpen" target="_blank" rel="noopener">Abrir aparte ↗</a><button id="frameClose">✕ Volver al casino</button></header><iframe id="frame" allow="autoplay; fullscreen"></iframe></div>
 
+<!-- TELÉFONO -->
+<div id="phone">
+  <div class="device">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="status"><b id="phTime">--:--</b><span>UAB·5G ▂▄▆ 🔋</span></div>
+      <div id="phBody"></div>
+      <nav id="phNav">
+        <button data-t="wallet"><i>💰</i>Cartera</button>
+        <button data-t="bar"><i>🍸</i>Bar</button>
+        <button data-t="orders"><i>🧾</i>Pedidos</button>
+        <button data-t="inv"><i>🎒</i>Cosas</button>
+        <button data-t="map"><i>🗺️</i>Mapa</button>
+      </nav>
+      <button class="phClose" id="phClose">✕</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="/lib/three.min.js"></script>
-<script src="avatar3d.js"></script>
-<script src="games.js"></script>
-<script src="main.js"></script>
+<script type="module">
+  // Carga Three.js (módulo) y sus efectos; después, los scripts del juego en orden
+  import * as THREE from 'three';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+  import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+  import { GammaCorrectionShader } from 'three/addons/shaders/GammaCorrectionShader.js';
+  import { Reflector } from 'three/addons/objects/Reflector.js';
+  window.THREE = THREE;
+  window.FX = { EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, GammaCorrectionShader, Reflector };
+  const load = src => new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => ko(new Error(src)); document.body.appendChild(s); });
+  try {
+    await Promise.race([document.fonts.load('48px Bungee'), new Promise(r => setTimeout(r, 1500))]);
+    for (const f of ['sfx.js', 'avatar3d.js', 'games.js', 'world.js', 'classic.js', 'main.js']) await load(f);
+  } catch (e) {
+    document.getElementById('joinHint').textContent = '⚠️ No se pudo cargar el 3D: ' + e.message;
+  }
+</script>
 </body>
 </html>

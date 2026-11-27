@@ -18,8 +18,11 @@ Para jugar con 2 "jugadores", abre dos pestañas (una de ellas en incógnito).
 | Archivo | Qué hace | Toca aquí si quieres… |
 |---|---|---|
 | `server.js` | Servidor: jugadores, mesas, premios, tienda (Socket.IO) | cambiar premios (`PRIZES`), monedas iniciales, artículos de la tienda (`SHOP`), mesas (`TABLES`) |
-| `public/main.js` | Sala 3D (Three.js), cámara, controles, tienda, pantallas de juego | cambiar la sala, la cámara, decoración |
-| `public/avatar3d.js` | Personaje de bloques y cómo se ponen los cosméticos | cambiar el personaje |
+| `public/main.js` | Cliente: cámara en primera persona, controles, colisiones, interacciones, camareros, teléfono, tienda y pantallas de juego | controles, teléfono, cómo se comportan los camareros |
+| `public/world.js` | Sala principal 3D: suelo, paredes, ruleta central, estaciones de juego, tienda, bar, tragaperras | cambiar la decoración o mover cosas |
+| `public/classic.js` | Sala del Casino Clásico (blackjack, póquer, ruleta, billar, bingo) | añadir o cambiar mesas clásicas |
+| `public/avatar3d.js` | Personajes 3D (jugadores, camareros, crupieres) y cosméticos | cambiar el aspecto de los personajes |
+| `public/sfx.js` | Efectos de sonido sintetizados | sonidos |
 | `public/games.js` | Los 6 minijuegos (uno por función) | arreglar o crear minijuegos |
 | `public/style.css` | Estilos de toda la interfaz | colores, tamaños |
 | `public/arcade.json` | Lista de juegos de otros grupos | añadir juegos al Arcade |
@@ -43,6 +46,14 @@ Slots: `color` (valor = color hex), `hat`, `face`, `pet` (valor = emoji), `fx` (
 1. `server.js` → añade la mesa en `TABLES` (id, nombre, emoji, posición x/y entre 100 y 900, color, duración `dur`, `desc` y `howto`).
 2. `server.js` → en `score()` di cómo se ordena el resultado (`key`: menor = mejor) y el texto que se muestra (`txt`). Si necesita datos iguales para todos, añádelos en `makeParams()`.
 3. `public/games.js` → crea la función con el mismo id: pinta la interfaz en `el` y llama **una vez** a `done(resultado)`.
+
+**Añadir algo a la carta del bar** → en `server.js`, dentro de `BAR`:
+```js
+helado: { name: 'Helado', emoji: '🍦', price: 9, kind: 'Postre' },
+```
+(`kind` puede ser `Bebida`, `Comida` o `Postre`; aparece solo en el menú del teléfono y de la barra.)
+
+**Convertir una mesa clásica en un juego real** → las mesas de `public/classic.js` son solo decoración (`station(...)`). Para hacerlas jugables, añade la mesa en `TABLES` del servidor y sigue los 3 pasos de "Crear un minijuego nuevo".
 
 ## 4. Cómo trabajar sin pisarnos
 ```bash

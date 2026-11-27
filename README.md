@@ -37,6 +37,24 @@ Modo proyector: abre `/?pantalla` en el ordenador de clase para ver la sala ente
 - El cliente envía su posición (`move`), empezar mesa (`table:start`), resultado (`game:result`) y compras (`shop`).
 - El servidor es la fuente de verdad: decide quién está en cada mesa, ordena resultados, reparte monedas y valida compras.
 
+
+## 🎨 Rediseño visual (rama `feature/visual-redesign`)
+
+El casino pasa a verse **en primera persona**, con estética de casino de Las Vegas (neón azul/violeta/rosa/dorado, suelo pulido con reflejos, ruleta gigante en el centro). Las **reglas de los 6 minijuegos y el multijugador no han cambiado**.
+
+| Zona | Qué hay |
+|---|---|
+| **Sala principal** | Entrada con alfombra roja · tienda VIP al fondo · bar en la esquina derecha · 6 estaciones de juego (una por minijuego) alrededor · tragaperras, arcade y lounge |
+| **Centro** | Gran estructura con ruleta colgante. Dentro hay un **ascensor** al Casino Clásico |
+| **Casino clásico** | Otra sala (verde, burdeos y dorado): blackjack, póquer, ruleta, billar y bingo, con crupieres, fichas y cartas. *De momento son ambientación (aún no se juegan).* |
+| **Teléfono** | Tecla **T** / botón 📱: cartera, carta del bar, pedidos, inventario y mapa |
+| **Bar** | Pide en la barra o desde el teléfono. Se cobra con monedas ficticias y un camarero te lleva el pedido |
+
+**Controles:** `WASD` andar · ratón para mirar (clic en la pantalla) · `Shift` correr · `E` interactuar · `T` teléfono. En móvil: joystick a la izquierda y deslizar a la derecha para mirar.
+**Calidad gráfica** (botón ✨ arriba a la derecha): alta (bloom + reflejos), media y baja. En móvil arranca en baja y el juego baja solo de nivel si va lento.
+
+Cambios mínimos en `server.js` (todos aditivos): nueva distribución de mesas/tienda/arcade, ruta `/jsm` para los efectos 3D, `room` de cada jugador (sala principal o clásica) y los eventos `bar:order` / `order:arrived` con la carta `BAR`.
+
 ## Ejecutar en local
 
 ```bash
