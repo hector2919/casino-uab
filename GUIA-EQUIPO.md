@@ -23,7 +23,8 @@ Para jugar con 2 "jugadores", abre dos pestañas (una de ellas en incógnito).
 | `public/classic.js` | Sala del Casino Clásico (blackjack, póquer, ruleta, billar, bingo) | añadir o cambiar mesas clásicas |
 | `public/avatar3d.js` | Personajes 3D (jugadores, camareros, crupieres) y cosméticos | cambiar el aspecto de los personajes |
 | `public/sfx.js` | Efectos de sonido sintetizados | sonidos |
-| `public/games.js` | Los 6 minijuegos (uno por función) | arreglar o crear minijuegos |
+| `public/games.js` | Los minijuegos sencillos (uno por función) | arreglar o crear minijuegos |
+| `public/arena.js` | Minijuego Tiroteo (shooter en primera persona) | cambiar el shooter |
 | `public/style.css` | Estilos de toda la interfaz | colores, tamaños |
 | `public/arcade.json` | Lista de juegos de otros grupos | añadir juegos al Arcade |
 

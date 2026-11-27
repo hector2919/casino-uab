@@ -149,7 +149,7 @@ if (PROJ) { close('join'); document.body.classList.add('in'); }
 const keys = {}, joy = { x: 0, y: 0 };
 let dragLook = null;
 const locked = () => document.pointerLockElement === cv;
-cv.addEventListener('click', () => { if (!TOUCH && joined && !uiOpen() && !locked() && cv.requestPointerLock) { try { cv.requestPointerLock(); } catch (e) {} } });
+cv.addEventListener('click', () => { if (!TOUCH && joined && !uiOpen() && !locked() && cv.requestPointerLock) { try { const p = cv.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } });
 document.addEventListener('pointerlockchange', () => $('lockHint').classList.toggle('off', locked() || TOUCH));
 addEventListener('mousemove', e => { if (locked() && me) { me.yaw -= e.movementX * .0022; me.pitch = Math.max(-1.35, Math.min(1.35, me.pitch - e.movementY * .0022)); } });
 cv.addEventListener('pointerdown', e => { if (!me || locked() || uiOpen()) return; if (e.pointerType === 'mouse' || e.clientX > innerWidth * .38) dragLook = { id: e.pointerId, x: e.clientX, y: e.clientY }; });
@@ -354,7 +354,7 @@ let last = performance.now(), fpsAcc = 0, fpsN = 0, lastDown = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
-  if (!CFG || !world) return;
+  if (!CFG || !world || window.PAUSE3D) return;       // PAUSE3D: la arena del Tiroteo pausa la sala para ahorrar batería
   resize();
   Object.values(labels).forEach(l => l._seen = false);
   if (me && joined && !PROJ) updateMe(dt, t);

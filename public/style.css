@@ -183,3 +183,23 @@ button.gold:disabled { filter: grayscale(1) brightness(.6); }
 .legend { font-size: .7rem; opacity: .75; margin-top: 6px; line-height: 1.5; }
 .empty { opacity: .6; text-align: center; padding: 20px 6px; font-size: .85rem; }
 @media (max-width: 700px) { #phone { right: auto; left: 50%; transform: translateX(-50%); } #phone.on { bottom: 8px; } }
+
+/* Shooter */
+#arenaWrap { position: fixed; inset: 0; z-index: 40; background: #000; touch-action: none; }
+#arenaWrap canvas { width: 100%; height: 100%; display: block; }
+.ahud { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; font-family: Bungee, sans-serif; font-size: 1.2rem; text-shadow: 0 2px 4px #000; pointer-events: none; }
+.cross { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; pointer-events: none; }
+.cross::before, .cross::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 2px #000; }
+.cross::before { left: 10px; top: 0; width: 2px; height: 22px; } .cross::after { top: 10px; left: 0; height: 2px; width: 22px; }
+.cross.hit::before, .cross.hit::after { background: #ff3355; }
+#aFeed { position: absolute; top: 48px; right: 10px; text-align: right; font-size: .9rem; pointer-events: none; }
+#aFeed div { background: #000a; padding: 3px 8px; border-radius: 6px; margin-bottom: 4px; }
+#aDead { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; font-family: Bungee; font-size: 2.2rem; color: #ff3355; background: #0007; pointer-events: none; }
+#aDead.on { display: flex; flex-direction: column; }
+#aDmg { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px #ff0000; opacity: 0; }
+#aDmg.on { animation: dmg .4s; } @keyframes dmg { from { opacity: 1; } to { opacity: 0; } }
+.joy { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 3px solid #fff8; background: #0003; display: none; pointer-events: none; }
+.joy.on { display: block; } .knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: #fffc; }
+#aFire { position: absolute; right: 24px; bottom: 40px; width: 90px; height: 90px; border-radius: 50%; font-size: 2.4rem; background: #ff006ecc; box-shadow: 0 0 20px #ff006e; }
+#aFire:active { transform: scale(.92); }
+.ahelp { position: absolute; bottom: 8px; left: 0; right: 120px; text-align: center; font-size: .72rem; opacity: .75; pointer-events: none; text-shadow: 0 1px 2px #000; }

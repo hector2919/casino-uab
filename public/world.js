@@ -324,6 +324,23 @@ const World = (() => {
         anim.main.push(t => { bg.rotation.y = Math.sin(t * .6) * .35; });
         circle(tb.p.x, tb.p.z, 1.6);
       },
+      arena(g, tb) {             // galería de tiro: mira de neón y blancos que suben y bajan
+        mesh(new T.CylinderGeometry(.18, .26, 2.2, 12), std('#1a1226', { metalness: .8, roughness: .3 }), 0, 1.1, 0, g);
+        const sight = new T.Group(); sight.position.y = 3.6; g.add(sight);
+        const rg = mesh(new T.TorusGeometry(1.5, .09, 10, 48), neonMat('#ff2a6d', 2), 0, 0, 0, sight);
+        const rg2 = mesh(new T.TorusGeometry(.9, .05, 8, 40), neonMat('#ffd23f', 1.8), 0, 0, 0, sight);
+        [[0, 0, 0], [0, 0, Math.PI / 2]].forEach(([x, y, r]) => { const b = mesh(new T.BoxGeometry(.08, 3.7, .08), neonMat('#ff2a6d', 1.8), 0, 0, 0, sight); b.rotation.z = r; });
+        const targets = [-2.3, 2.3].map((x, i) => {
+          const t = new T.Group(); t.position.set(x, 0, -1.4 + i * 2.8); g.add(t);
+          mesh(new T.BoxGeometry(.7, 1.0, .12), std('#d9d9e6', { roughness: .5 }), 0, .9, 0, t);
+          mesh(new T.SphereGeometry(.26, 16, 12), std('#d9d9e6', { roughness: .5 }), 0, 1.65, 0, t);
+          const bull = mesh(new T.CircleGeometry(.24, 20), neonMat('#ff2a3a', 1.4), 0, .95, .07, t);
+          return t;
+        });
+        const ic = AV.sprite('🔫', 1.1); ic.position.y = 5.4; g.add(ic);
+        anim.main.push(t => { sight.rotation.z = t * .7; sight.rotation.y = Math.sin(t * .6) * .6; targets.forEach((tg, i) => { tg.position.y = Math.max(0, Math.sin(t * 1.4 + i * 3)) * .5; tg.rotation.y = Math.sin(t + i) * .3; }); ic.position.y = 5.4 + Math.sin(t * 2) * .15; });
+        circle(tb.p.x, tb.p.z, 1.3);
+      },
     };
     CFG.tables.forEach(tb => {
       const p = m3(tb.x, tb.y); tb.p = p; tableSpots[tb.id] = p;
