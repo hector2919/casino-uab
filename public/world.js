@@ -113,8 +113,9 @@ const World = (() => {
     const billboards = [], screens = [], npcs = { main: [], classic: [] }, reflectors = [];
     const gold = std('#e0a830', { metalness: 1, roughness: .28 }), goldBright = std('#ffd77a', { metalness: 1, roughness: .2 });
     const marble = std('#0a0818', { roughness: .18, metalness: .55 }), velvet = std('#5a1578', { roughness: .85 });
-    const circle = (x, z, r) => colliders.main.push({ t: 'c', x, z, r });
-    const box = (x0, x1, z0, z1) => colliders.main.push({ t: 'b', x0, x1, z0, z1 });
+    const circle = (x, z, r, h = 1.2) => colliders.main.push({ t: 'c', x, z, r, h });
+    const seats = { main: [], classic: [] };      // sitios donde se puede uno sentar
+    const box = (x0, x1, z0, z1, h = 1.2) => colliders.main.push({ t: 'b', x0, x1, z0, z1, h });
 
     // Entorno para reflejos metálicos (luces de neón de colores)
     const envScene = new T.Scene(); envScene.background = C('#0a0618');
@@ -184,7 +185,7 @@ const World = (() => {
       [1.2, 6, 12].forEach(y => mesh(new T.TorusGeometry(.6, .1, 8, 24), gold, 0, y, 0, g).rotation.x = Math.PI / 2);
       mesh(new T.CylinderGeometry(.8, .8, .5, 24), gold, 0, .25, 0, g); mesh(new T.CylinderGeometry(.85, .62, .7, 24), gold, 0, H - .35, 0, g);
       mesh(new T.CylinderGeometry(.12, .12, H - 3, 8), neonMat(z > 0 ? '#2de2ff' : '#ff3ea5', 1.6), -sx * .56, H / 2, 0, g);
-      circle(x, z, .8);
+      circle(x, z, .8, H);
     }));
 
     // ----- Estructura central: ruleta gigante + tambor con ascensor al casino clásico -----
@@ -206,12 +207,12 @@ const World = (() => {
       const x = Math.cos(a) * (DR + .12), z = Math.sin(a) * (DR + .12);
       if (i % 3 === 0) pil.push(mtx(x, DH / 2 + .2, z, -a + Math.PI / 2));
       [1.3, 3.3].forEach((y, k) => { neonB.push(mtx(x, y + .2, z, -a + Math.PI / 2)); });
-      if (i % 2 === 0) circle(Math.cos(a) * (DR + .3), Math.sin(a) * (DR + .3), .75);
+      if (i % 2 === 0) circle(Math.cos(a) * (DR + .3), Math.sin(a) * (DR + .3), .75, DH);
     }
     main.add(instanced(new T.BoxGeometry(.4, DH, .3), gold, pil));
     const nb = instanced(new T.BoxGeometry(.8, .06, .06), neonMat('#ff3ea5', 1.9), neonB); main.add(nb);
     // marco de la puerta y rótulo
-    [-1, 1].forEach(s => { mesh(new T.CylinderGeometry(.3, .3, DH + .1, 16), goldBright, s * 2.55, DH / 2 + .2, DR - .15, ctr); circle(s * 2.85, DR - .1, .5); });
+    [-1, 1].forEach(s => { mesh(new T.CylinderGeometry(.3, .3, DH + .1, 16), goldBright, s * 2.55, DH / 2 + .2, DR - .15, ctr); circle(s * 2.85, DR - .1, .5, DH); });
     mesh(new T.BoxGeometry(5.6, .9, .5), gold, 0, DH - .1, DR - .1, ctr);
     mesh(new T.BoxGeometry(4.9, .08, .08), neonMat('#ffb703', 2), 0, DH - .65, DR + .18, ctr);
     const doorSign = signPlane('CASINO CLÁSICO', '#ffb703', 7.4, 1.7, 'ascensor · blackjack · póquer · billar · bingo'); doorSign.position.set(0, DH + 2.4, DR + .5); ctr.add(doorSign); billboards.push(doorSign);
@@ -258,7 +259,7 @@ const World = (() => {
         const lamps = ['#ff2a2a', '#ffd23f', '#2dff6f'].map((c, i) => { const l = mesh(new T.SphereGeometry(.34, 20, 14), neonMat(c, .2), 0, 5.1 - i * .85, .42, g); l.userData.c = c; return l; });
         const back = mesh(new T.BoxGeometry(1.6, 3.2, .1), gold, 0, 4.3, -.45, g);
         anim.main.push(t => lamps.forEach((l, i) => { const on = Math.floor(t * .9) % 3 === i; l.material.color.copy(C(l.userData.c)).multiplyScalar(on ? 2.6 : .14); }));
-        circle(tb.p.x, tb.p.z, 1.3);
+        circle(tb.p.x, tb.p.z, 1.3, 5.8);
       },
       clicks(g, tb) {            // pulsador gigante
         mesh(new T.CylinderGeometry(1.5, 1.8, .7, 32), std('#9aa0b5', { metalness: 1, roughness: .2 }), 0, .55, 0, g);
@@ -284,7 +285,7 @@ const World = (() => {
         mesh(new T.CylinderGeometry(.14, .14, .4, 12), goldBright, 0, 1.95, 0, wg);
         const fc2 = fc.clone(); fc2.position.z = -.26; fc2.rotation.y = Math.PI; wg.add(fc2);
         anim.main.push(t => { hand.rotation.z = -t * 1.3; wg.rotation.y = Math.sin(t * .5) * .5; });
-        circle(tb.p.x, tb.p.z, 1.9);
+        circle(tb.p.x, tb.p.z, 1.9, 4.9);
       },
       calculo(g, tb) {           // pizarra holográfica
         [-1.9, 1.9].forEach(x => mesh(new T.CylinderGeometry(.1, .14, 3.2, 10), gold, x, 1.7, 0, g));
@@ -298,7 +299,7 @@ const World = (() => {
         mesh(new T.BoxGeometry(5, 2.9, .14), gold, 0, 3.2, 0, g).material = std('#0c0824', { metalness: .8, roughness: .3 });
         const orb = ['➕', '➖', '✖️', '➗'].map((e, i) => { const s = AV.sprite(e, .7); g.add(s); return s; });
         anim.main.push(t => orb.forEach((s, i) => { const a = t * .9 + i * 1.57; s.position.set(Math.cos(a) * 2.9, 1.3 + Math.sin(t * 1.5 + i) * .3, Math.sin(a) * 2.9); }));
-        circle(tb.p.x, tb.p.z, 2.4);
+        circle(tb.p.x, tb.p.z, 2.4, 4.7);
       },
       memoria(g, tb) {           // cuatro pilares de colores
         const cols = ['#ff2a3a', '#2dd36f', '#ffd23f', '#3d6bff'], pil = [];
@@ -306,7 +307,7 @@ const World = (() => {
           mesh(new T.CylinderGeometry(.6, .7, 2.2, 24), std('#15102c', { metalness: .7, roughness: .3 }), x, 1.2, z, g);
           const cap = mesh(new T.CylinderGeometry(.55, .55, .3, 24), neonMat(cols[i], .3), x, 2.45, z, g); cap.userData.c = cols[i]; pil.push(cap);
           const bs = beam(cols[i], .5, .5, 2, .2); bs.position.set(x, 3.6, z); g.add(bs); bs.visible = false; cap.userData.beam = bs;
-          circle(tb.p.x + x, tb.p.z + z, .8);
+          circle(tb.p.x + x, tb.p.z + z, .8, 2.6);
         });
         anim.main.push(t => pil.forEach((c, i) => { const on = Math.floor(t * 1.6) % 6 === i; c.material.color.copy(C(c.userData.c)).multiplyScalar(on ? 3 : .25); c.userData.beam.visible = on; }));
       },
@@ -322,7 +323,7 @@ const World = (() => {
         mesh(new T.CylinderGeometry(2, 2, .2, 48), gold, 0, 0, 0, bg).rotation.x = Math.PI / 2;
         [[.4, .3], [-.6, -.2], [.1, -.7]].forEach(([x, y]) => { const d = mesh(new T.CylinderGeometry(.02, .02, .7, 6), std('#ddd', { metalness: 1 }), x, y, .45, bg); d.rotation.x = Math.PI / 2; mesh(new T.ConeGeometry(.07, .2, 8), neonMat('#ff3ea5', 1.6), x, y, .85, bg).rotation.x = Math.PI / 2; });
         anim.main.push(t => { bg.rotation.y = Math.sin(t * .6) * .35; });
-        circle(tb.p.x, tb.p.z, 1.6);
+        circle(tb.p.x, tb.p.z, 1.6, 5.6);
       },
       arena(g, tb) {             // galería de tiro: mira de neón y blancos que suben y bajan
         mesh(new T.CylinderGeometry(.18, .26, 2.2, 12), std('#1a1226', { metalness: .8, roughness: .3 }), 0, 1.1, 0, g);
@@ -339,7 +340,7 @@ const World = (() => {
         });
         const ic = AV.sprite('🔫', 1.1); ic.position.y = 5.4; g.add(ic);
         anim.main.push(t => { sight.rotation.z = t * .7; sight.rotation.y = Math.sin(t * .6) * .6; targets.forEach((tg, i) => { tg.position.y = Math.max(0, Math.sin(t * 1.4 + i * 3)) * .5; tg.rotation.y = Math.sin(t + i) * .3; }); ic.position.y = 5.4 + Math.sin(t * 2) * .15; });
-        circle(tb.p.x, tb.p.z, 1.3);
+        circle(tb.p.x, tb.p.z, 1.3, 4.6);
       },
     };
     CFG.tables.forEach(tb => {
@@ -366,7 +367,7 @@ const World = (() => {
       const items = (s < 0 ? ['👑', '🎩', '🤠'] : ['🕶️', '🐉', '🦜']).map((e, i) => { const sp2 = AV.sprite(e, .95); sp2.position.set((i - 1) * 1.0, 2, 0); vg.add(sp2); return sp2; });
       anim.main.push(t => items.forEach((it, i) => { it.position.y = 2 + Math.sin(t * 2 + i * 2 + s) * .18; }));
       mesh(new T.CylinderGeometry(1.4, 1.6, .05, 24), neonMat('#ff3ea5', 1.5), 0, .52, 0, vg);
-      box(s * 10.6 - 1.8, s * 10.6 + 1.8, -HS + .3, -HS + 2.5);
+      box(s * 10.6 - 1.8, s * 10.6 + 1.8, -HS + .3, -HS + 2.5, 3.8);
     });
     [-5.2, 5.2].forEach((x, i) => {   // expositores con focos
       const pg = new T.Group(); pg.position.set(x, 0, 8.2); shop.add(pg);
@@ -397,6 +398,7 @@ const World = (() => {
     const sGeo = new T.CylinderGeometry(.3, .26, .1, 16); sGeo.translate(0, .78, 0);
     const pGeo = new T.CylinderGeometry(.04, .04, .78, 8); pGeo.translate(0, .39, 0); const bGeo = new T.CylinderGeometry(.24, .26, .05, 16); bGeo.translate(0, .03, 0);
     const sm = sA.map(([x, z]) => mtx(x, 0, z));
+    sA.forEach(([x, z]) => seats.main.push({ x, z, face: Math.atan2(cx - x, cz - z), sy: .83 }));
     main.add(instanced(sGeo, std('#8a1034', { roughness: .5 }), sm), instanced(pGeo, gold, sm), instanced(bGeo, gold, sm));
     // estantes con botellas luminosas
     const bottles = [], bcols = [];
@@ -419,7 +421,7 @@ const World = (() => {
       const tg = new T.Group(); tg.position.set(x, 0, z); main.add(tg);
       mesh(new T.CylinderGeometry(.06, .06, 1, 8), gold, 0, .5, 0, tg); mesh(new T.CylinderGeometry(.6, .6, .06, 24), marble, 0, 1, 0, tg);
       mesh(new T.SphereGeometry(.07, 8, 8), neonMat('#ffb36b', 2.4), 0, 1.12, 0, tg);
-      for (let k = 0; k < 3; k++) { const a = k * 2.09 + x; mesh(sGeo, std('#8a1034'), Math.cos(a) * 1.15, 0, Math.sin(a) * 1.15, tg); mesh(pGeo, gold, Math.cos(a) * 1.15, 0, Math.sin(a) * 1.15, tg); }
+      for (let k = 0; k < 3; k++) { const a = k * 2.09 + x; mesh(sGeo, std('#8a1034'), Math.cos(a) * 1.15, 0, Math.sin(a) * 1.15, tg); mesh(pGeo, gold, Math.cos(a) * 1.15, 0, Math.sin(a) * 1.15, tg); seats.main.push({ x: x + Math.cos(a) * 1.15, z: z + Math.sin(a) * 1.15, face: Math.atan2(-Math.cos(a), -Math.sin(a)), sy: .83 }); }
       circle(x, z, .85);
     });
     const bartender = AV.createStaff('bartender', 'barman'); bartender.userData.deal = true; bartender.position.set(cx - 4.6, 0, cz + 4.6); bartender.rotation.y = -Math.PI / 4; main.add(bartender);
@@ -428,7 +430,7 @@ const World = (() => {
 
     // ----- Tragaperras a lo largo de las paredes -----
     const slotM = [], slotC = [], slotStool = [];
-    const addSlots = (x, zs, ry) => zs.forEach((z, i) => { slotM.push(mtx(x, 0, z, ry)); slotC.push(new T.Color().setHSL((i * .137) % 1, .9, .5)); slotStool.push(mtx(x + Math.sin(ry) * 1.3, 0, z + Math.cos(ry) * 1.3)); circle(x, z, .62); });
+    const addSlots = (x, zs, ry) => zs.forEach((z, i) => { slotM.push(mtx(x, 0, z, ry)); slotC.push(new T.Color().setHSL((i * .137) % 1, .9, .5)); slotStool.push(mtx(x + Math.sin(ry) * 1.3, 0, z + Math.cos(ry) * 1.3)); seats.main.push({ x: x + Math.sin(ry) * 1.3, z: z + Math.cos(ry) * 1.3, face: ry + Math.PI, sy: .83 }); circle(x, z, .62, 1.95); });
     const zr = (a, b, st) => { const r = []; for (let z = a; z <= b; z += st) r.push(+z.toFixed(2)); return r; };
     addSlots(-HS + 1.05, zr(-14, 14, 1.75), Math.PI / 2); addSlots(HS - 1.05, zr(-4, 22, 1.75), -Math.PI / 2);
     const slotBody = new T.BoxGeometry(1.15, 1.95, .95); slotBody.translate(0, .98, 0);
@@ -489,7 +491,7 @@ const World = (() => {
     const world = {
       S, H, U, env, reflectors, colliders, anim, billboards, screens, npcs, spots: { door: spots.door, shop: { x: 0, z: -HS + 6 }, bar: barSpot, tables: tableSpots, arcade: ap && m3(CFG.arcadePos.x, CFG.arcadePos.y), shopNpc: { x: 0, z: -HS + 3.1 }, barNpc: { x: cx - 4.6, z: cz + 4.6 } },
       rooms: { main: { group: main, fog: [0x09051c, .0125], bg: 0x05030c }, classic: null },
-      stationLights, quality: 'high', lastScreen: 0,
+      stationLights, seats, quality: 'high', lastScreen: 0,
       setQuality(q) {
         world.quality = q;
         const refl = q === 'high';

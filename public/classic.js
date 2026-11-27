@@ -15,7 +15,7 @@ World.buildClassic = function (world, CFG) {
       .forEach(([w, h, d, x, y, z, c, k]) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), new T.MeshBasicMaterial({ color: C(c).multiplyScalar(k * .4) })); m.position.set(x, y, z); es.add(m); });
     const pm = new T.PMREMGenerator(world.shared.renderer); world.rooms.classic.env = pm.fromScene(es, .02).texture; pm.dispose();
     world.rooms.classic.hemi = [0xffd9a0, 0x1a0f08, .8]; }
-  const circle = (x, z, r) => colliders.push({ t: 'c', x, z, r });
+  const circle = (x, z, r, h = 1.1) => colliders.push({ t: 'c', x, z, r, h });
   const wood = std('#2b150a', { roughness: .45, metalness: .1 }), green = std('#0d6b3c', { roughness: .95 }), leather = std('#4a0a18', { roughness: .6 });
 
   // ----- Suelo: moqueta verde con ornamentos + alfombra central burdeos -----
@@ -205,6 +205,7 @@ World.buildClassic = function (world, CFG) {
   const seat = new T.BoxGeometry(.56, .1, .56); seat.translate(0, .55, 0); const back = new T.BoxGeometry(.56, .65, .1); back.translate(0, .93, -.28); const ped = new T.CylinderGeometry(.05, .05, .5, 6); ped.translate(0, .27, 0);
   const cm = chairs.map(([x, z, ry]) => mtx(x, 0, z, ry));
   g.add(instanced(seat, leather, cm), instanced(back, leather, cm), instanced(ped, gold, cm));
+  world.seats.classic = chairs.map(([x, z, ry]) => ({ x, z, face: ry, sy: .6 }));
   g.add(instanced(new T.CylinderGeometry(.1, .1, .03, 14), new T.MeshStandardMaterial({ roughness: .4 }), chip, chipCol));
 
   // ----- Columnas verdes con capitel dorado, cuadros, apliques, plantas y cordones -----
@@ -212,7 +213,7 @@ World.buildClassic = function (world, CFG) {
     const c = new T.Group(); c.position.set(sx * 26.5, 0, z); g.add(c);
     mesh(new T.CylinderGeometry(.5, .56, H - .4, 24), std('#0b3b2a', { roughness: .2, metalness: .3 }), 0, H / 2, 0, c);
     [.2, H - .4].forEach(y => mesh(new T.CylinderGeometry(.78, .78, .4, 24), gold, 0, y, 0, c)); [2.2, 5, 8].forEach(y => { mesh(new T.TorusGeometry(.55, .06, 8, 24), gold, 0, y, 0, c).rotation.x = Math.PI / 2; });
-    circle(sx * 26.5, z, .75);
+    circle(sx * 26.5, z, .75, H);
     const sc = new T.Group(); sc.position.set(sx * -.62, 3.6, 0); c.add(sc); mesh(new T.SphereGeometry(.14, 12, 10), neonMat('#ffd9a0', 2), 0, 0, 0, sc); mesh(new T.CylinderGeometry(.12, .06, .26, 10), gold, 0, -.2, 0, sc);
   }));
   const paint = (x, z, ry, txt, col) => {
@@ -225,7 +226,7 @@ World.buildClassic = function (world, CFG) {
   [[-24, -24], [24, -24], [-24, 26], [24, 26]].forEach(([x, z]) => {
     mesh(new T.CylinderGeometry(.5, .4, .7, 16), std('#7a4a1a', { roughness: .5 }), x, .35, z, g);
     for (let k = 0; k < 9; k++) mesh(new T.SphereGeometry(.55 + (k % 3) * .12, 10, 8), std(['#1f6a35', '#2b8a46', '#175a2a'][k % 3], { roughness: .9 }), x + Math.cos(k * 2.4) * .5, 1.3 + (k % 4) * .35, z + Math.sin(k * 2.4) * .5, g);
-    circle(x, z, .7);
+    circle(x, z, .7, 2.2);
   });
 
   // ----- Ascensor de vuelta a la sala principal (pared sur) -----

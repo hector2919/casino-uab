@@ -70,7 +70,7 @@ const AV = (() => {
     atlas = new T.CanvasTexture(c); atlas.anisotropy = 4; return atlas;
   }
   let MAT = null;
-  const getMat = () => MAT || (MAT = new T.MeshStandardMaterial({ map: getAtlas(), vertexColors: true, roughness: .62, metalness: .04 }));
+  const getMat = () => MAT || (MAT = new T.MeshStandardMaterial({ map: getAtlas(), vertexColors: true, roughness: .62, metalness: .04, color: new T.Color(.74, .74, .74) }));
 
   // Textura del rostro (ojos, cejas, nariz, labios): se cachea por combinación de rasgos
   const faceCache = {};
@@ -468,7 +468,7 @@ const AV = (() => {
       hands.push({ holder, s });
     });
     const ph = new T.Mesh(new T.BoxGeometry(.07, .146, .008), [0, 1, 2, 3, 4, 5].map(i => new T.MeshStandardMaterial({ color: i === 4 ? '#7fd0ff' : '#101015', metalness: .7, roughness: .25, emissive: i === 4 ? '#2a6a9a' : '#000' })));
-    hands[0].holder.add(ph); ph.position.set(0, -.37, .028); ph.rotation.x = -.15;
+    grp.add(ph); ph.position.set(.06, -.235, -.47); ph.rotation.set(-.3, -.08, .06);
     grp.visible = false;
     let w = 0, ww = 0;
     return {
@@ -480,11 +480,12 @@ const AV = (() => {
         const ph_ = mode === 'phone', rc = mode === 'reach';
         hands.forEach(({ holder, s }) => {
           const right = s < 0;
-          // posición en el espacio de la cámara (x derecha, y arriba, -z hacia delante); la mano cuelga hacia -y
-          let px = s * .17, py = -.33 - (1 - w) * .35, pz = -.38, rx = -1.15, ry = 0, rz = -s * .12;
-          if (ph_) { if (right) { px = .06; py = -.2; pz = -.4; rx = -1.35; rz = -.12; } else { px = -.1; py = -.3; pz = -.38; rx = -1.1; rz = .35; } }
-          if (rc) { if (right) { px = .1; py = -.22; pz = -.42; rx = -1.35 - Math.sin(t * 7) * .1; } else { px = -.17; py = -.38 - (1 - w) * .3; } }
-          holder.position.set(px + sway, py + bob, pz); holder.rotation.set(rx, ry, rz);
+          // La mano cuelga hacia -y desde el codo; en el espacio de la cámara "delante" es -z (giro positivo en x = hacia delante)
+          let px = right ? .15 : -.15, py = -.78 + w * .0, pz = -.2, rx = 1.3, rz = 0;
+          if (ph_) { if (right) { px = .09; py = -.4; pz = -.13; rx = 1.95; rz = .0; } else { px = -.11; py = -.46; pz = -.1; rx = 1.7; rz = -.25; } }
+          else if (rc) { if (right) { px = .13; py = -.15 - (1 - w) * .5; pz = -.2 - Math.sin(t * 7) * .02; rx = 1.38; } else { px = -.16; py = -.55; pz = -.2; rx = 1.3; } }
+          else { py = -.78; }
+          holder.position.set(px + sway, py + bob, pz); holder.rotation.set(rx, 0, rz);
         });
         ph.visible = ph_;
       },
