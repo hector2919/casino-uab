@@ -120,7 +120,7 @@ GAMES.arena = function (el, p, done, timer) {
     if (!hit) return;
     const fid = Object.keys(foes).find(id => { let o = hit.object; while (o) { if (o === foes[id].mesh) return true; o = o.parent; } return false; });
     if (fid) {
-      let o = hit.object, head = false; while (o) { if (o === foes[fid].mesh.userData.head) head = true; o = o.parent; }
+      const head = hit.point.y - foes[fid].mesh.position.y > 1.65;   // impacto a la altura de la cabeza
       socket.emit('arena:shoot', { target: fid, head });
     } else socket.emit('arena:shoot', {});
   }
