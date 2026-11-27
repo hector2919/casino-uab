@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏁</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>¡DERRAPA! · Pantalla</title>
+<style>
+  :root { --panel: #15132a; --panel2: #221f3d; --line: #35305c; --yellow: #ffcc00; --red: #e8433c; --pink: #ff4fd8; --cyan: #35e0ff; --dim: #a9a3c9; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0b0a17; color: #fff; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; height: 100vh; display: flex; }
+  #game { flex: 1; position: relative; min-width: 0; overflow: hidden; background: #000; }
+  #c3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #c2d { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; display: none; background: #1d3b1f; }
+  body.v2d #c3d, body.v2d #labels { display: none; } body.v2d #c2d { display: block; }
+  #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .klabel { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 5px; padding: 3px 9px 3px 4px; border-radius: 20px;
+    background: #0009; border: 1px solid #fff3; font-weight: 800; font-size: 14px; white-space: nowrap; will-change: transform; backdrop-filter: blur(2px); }
+  .klabel::before { content: attr(data-pos); font-size: 12px; min-width: 0; color: var(--yellow); font-style: italic; }
+  .klabel[data-pos=""]::before { display: none; }
+  .klabel.lead { border-color: var(--yellow); box-shadow: 0 0 12px #ffcc0077; }
+  .kdot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
+
+  /* HUD sobre el juego */
+  #hud { position: absolute; top: 14px; left: 14px; display: flex; gap: 10px; pointer-events: none; }
+  .chip { background: #0b0a17cc; border: 1px solid var(--line); border-radius: 14px; padding: 8px 14px; backdrop-filter: blur(4px); }
+  .chip .k { font-size: 11px; letter-spacing: 1.5px; color: var(--dim); font-weight: 700; }
+  .chip .v { font-size: 26px; font-weight: 900; font-style: italic; line-height: 1.1; }
+  .chip .v small { font-size: 15px; color: var(--dim); }
+  #envBadge { position: absolute; top: 14px; right: 14px; pointer-events: none; font-weight: 700; font-size: 14px; }
+  #banner { position: absolute; top: 18%; left: 0; right: 0; text-align: center; pointer-events: none; font-size: 64px; font-weight: 900; font-style: italic;
+    color: var(--yellow); text-shadow: 0 6px 0 #000a, 0 0 30px #ff4fd8aa; opacity: 0; }
+  #banner.show { animation: banner 2.6s ease-out forwards; }
+  #banner small { display: block; font-size: 26px; color: #fff; font-style: normal; }
+  @keyframes banner { 0% { transform: translateX(-60%) skewX(-12deg); opacity: 0; } 12% { transform: none; opacity: 1; } 82% { opacity: 1; transform: none; } 100% { transform: translateX(60%) skewX(12deg); opacity: 0; } }
+  #count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; font-weight: 900; font-style: italic;
+    font-size: 240px; color: var(--yellow); text-shadow: 0 10px 0 #000a, 0 0 60px #ffcc00aa; opacity: 0; }
+  #count.pop { animation: pop .95s cubic-bezier(.2, 1.6, .4, 1) forwards; }
+  #count.go { color: #2ed573; text-shadow: 0 10px 0 #000a, 0 0 70px #2ed573; }
+  @keyframes pop { 0% { transform: scale(3) rotate(-10deg); opacity: 0; } 25% { transform: scale(1) rotate(0); opacity: 1; } 75% { opacity: 1; } 100% { transform: scale(.7); opacity: 0; } }
+  #lobbyMsg { position: absolute; bottom: 8%; left: 0; right: 0; text-align: center; pointer-events: none; font-size: 40px; font-weight: 900; text-shadow: 0 4px 0 #000a; }
+  #lobbyMsg small { display: block; font-size: 22px; font-weight: 600; opacity: .85; margin-top: 6px; }
+
+  /* Podio */
+  #podium { position: absolute; inset: 0; background: radial-gradient(ellipse at center, #1b0f3add 0%, #07051099 70%); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+  #podium.show { display: flex; animation: fadein .6s; }
+  @keyframes fadein { from { opacity: 0; } }
+  #confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #podium h2 { font-size: 58px; font-weight: 900; font-style: italic; color: var(--yellow); text-shadow: 3px 3px 0 var(--red), 0 0 30px #ffcc0088; z-index: 1; }
+  .steps { display: flex; align-items: flex-end; gap: 14px; z-index: 1; }
+  .step { width: 190px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .step .who { text-align: center; animation: rise .8s backwards; }
+  .step .trophy { font-size: 56px; filter: drop-shadow(0 4px 8px #000a); }
+  .step .nm { font-size: 22px; font-weight: 900; }
+  .step .tm { font-size: 15px; color: var(--dim); }
+  .step .kart { width: 70px; height: 34px; border-radius: 10px; border: 3px solid #fff; margin: 4px auto; box-shadow: 0 6px 18px #0008; }
+  .step .block { width: 100%; border-radius: 14px 14px 0 0; display: flex; align-items: flex-start; justify-content: center; font-size: 64px; font-weight: 900;
+    padding-top: 10px; color: #0008; animation: grow .9s backwards; transform-origin: bottom; }
+  .p1 .block { height: 190px; background: linear-gradient(#ffe066, #e0a800); } .p2 .block { height: 140px; background: linear-gradient(#e9ecef, #adb5bd); } .p3 .block { height: 105px; background: linear-gradient(#f0a868, #b8651e); }
+  .p1 .who { animation-delay: .9s; } .p2 .who { animation-delay: .5s; } .p3 .who { animation-delay: .2s; }
+  .p1 .block { animation-delay: .6s; } .p2 .block { animation-delay: .3s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(40px) scale(.6); } }
+  @keyframes grow { from { transform: scaleY(0); } }
+  #results { z-index: 1; display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; max-width: 900px; font-size: 15px; color: #ddd; }
+  #podFast { z-index: 1; font-size: 18px; color: var(--cyan); font-weight: 700; }
+  #podium .btns { display: flex; gap: 12px; z-index: 1; }
+
+  /* Panel lateral */
+  #side { width: 300px; padding: 16px; background: var(--panel); display: flex; flex-direction: column; gap: 11px; border-left: 1px solid var(--line); overflow-y: auto; }
+  h1 { font-size: 34px; font-weight: 900; font-style: italic; letter-spacing: 1px; color: var(--yellow); text-shadow: 3px 3px 0 var(--red), 0 0 20px #ff4fd855; }
+  .join { background: var(--panel2); border-radius: 12px; padding: 10px; font-size: 14px; text-align: center; }
+  .join img { width: 100%; max-width: 170px; border-radius: 8px; display: block; margin: 8px auto; background: #fff; }
+  .join b { display: block; font-size: 12px; color: var(--yellow); word-break: break-all; }
+  #rank { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; flex: 1; min-height: 90px; }
+  #rank li { display: flex; align-items: center; gap: 8px; background: var(--panel2); padding: 6px 9px; border-radius: 9px; font-size: 15px; transition: transform .2s; }
+  #rank li b { width: 18px; font-style: italic; color: var(--yellow); }
+  #rank .dot { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+  #rank .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #rank .info { margin-left: auto; opacity: .8; font-size: 13px; white-space: nowrap; text-align: right; }
+  #rank .info small { display: block; font-size: 10px; color: var(--cyan); }
+  .row { display: flex; gap: 6px; }
+  .row button { flex: 1; }
+  button { background: var(--red); color: #fff; border: 0; padding: 13px; font-size: 20px; border-radius: 10px; cursor: pointer; font-weight: 800; font-family: inherit; }
+  button:hover { filter: brightness(1.1); }
+  button.sec { background: #2e2a52; font-size: 13px; padding: 9px 6px; font-weight: 600; }
+  button.sec.sel { background: var(--yellow); color: #111; font-weight: 800; }
+  .lbl { font-size: 11px; letter-spacing: 1.5px; color: var(--dim); font-weight: 700; margin-bottom: -5px; }
+  #start.rematch { background: linear-gradient(90deg, #ff4fd8, #e8433c); }
+  .keys { font-size: 11px; color: #7d77a6; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="c3d"></canvas>
+  <canvas id="c2d" width="1600" height="900"></canvas>
+  <div id="labels"></div>
+  <div id="hud" style="display:none">
+    <div class="chip"><div class="k">VUELTA</div><div class="v" id="hLap">1<small>/3</small></div></div>
+    <div class="chip"><div class="k">TIEMPO</div><div class="v" id="hTime">0.0</div></div>
+    <div class="chip" id="hFastBox" style="display:none"><div class="k">⏱ VUELTA RÁPIDA</div><div class="v" id="hFast" style="font-size:20px"></div></div>
+  </div>
+  <div id="envBadge" class="chip"></div>
+  <div id="lobbyMsg"></div>
+  <div id="count"></div>
+  <div id="banner"></div>
+  <div id="podium">
+    <canvas id="confetti"></canvas>
+    <h2>🏆 ¡PODIO! 🏆</h2>
+    <div class="steps" id="steps"></div>
+    <div id="podFast"></div>
+    <div id="results"></div>
+    <div class="btns"><button id="again" class="rematch" style="background:linear-gradient(90deg,#ff4fd8,#e8433c)">🔁 NUEVA CARRERA</button><button id="toGrid" class="sec" style="font-size:16px;padding:13px 18px">A la parrilla</button></div>
+  </div>
+</div>
+<div id="side">
+  <h1>¡DERRAPA!</h1>
+  <div class="join">Escanea y conduce con el móvil<img id="qr" alt="QR para entrar"><b id="url"></b></div>
+  <ol id="rank"></ol>
+  <button id="start">¡SALIDA!</button>
+  <div class="row"><button id="reset" class="sec">A la parrilla</button><button id="bot" class="sec">+ Bot</button><button id="nobots" class="sec">− Bots</button></div>
+  <div class="lbl">AMBIENTE</div>
+  <div class="row" id="envRow"><button class="sec" data-env="auto">🕒 Auto</button><button class="sec" data-env="day">☀️ Día</button><button class="sec" data-env="sunset">🌇 Tarde</button><button class="sec" data-env="night">🌃 Noche</button></div>
+  <div class="lbl">CÁMARA</div>
+  <div class="row" id="camRow"><button class="sec" data-cam="auto">🎥 Todos</button><button class="sec" data-cam="leader">🏎️ Líder</button><button class="sec" data-cam="orbit">🌍 Vista</button></div>
+  <div class="row"><button class="sec" id="mute">🔊 Sonido</button><button class="sec" id="view">🧊 Vista 2D</button><button class="sec" id="fs">⛶</button></div>
+  <div class="keys">Atajos: 1-4 ambiente · C cámara · M sonido · V vista 2D/3D · F pantalla completa</div>
+</div>
+
+<script>
+// Si se abre con doble clic (file://) no hay servidor: explicamos qué hacer
+if (location.protocol === 'file:') addEventListener('DOMContentLoaded', () => {
+  document.body.innerHTML = '<div style="margin:auto;max-width:560px;padding:30px;font:18px system-ui;color:#fff;line-height:1.5">' +
+    '<h1 style="color:#ffcc00">¡DERRAPA! necesita su servidor</h1>' +
+    '<p>Este archivo no funciona con doble clic. Arranca el juego con <b>npm start</b> en la carpeta <b>derrapa</b> ' +
+    'y abre <b>http://localhost:3000</b> en el navegador (o la URL de Render si ya está publicado).</p></div>';
+});
+</script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/engine.js"></script>
+<script src="/js/world3d.js"></script>
+<script src="/js/render2d.js"></script>
+<script src="/js/sfx.js"></script>
+<script>
+const socket = io();
+const $ = id => document.getElementById(id);
+const ICON = { nitro: '⚡', triple: '⚡³', aceite: '🛢️', misil: '🚀', escudo: '🛡️', '?': '❔' };
+const ENV_TXT = { day: '☀️ Día', sunset: '🌇 Atardecer', night: '🌃 Noche casino' };
+const sfx = new Sfx();
+const r2d = new Render2D($('c2d'));
+let T = null, S = null, world = null, use3D = true;
+let uiState = '', lastCount = null, lastRankAt = 0;
+try { use3D = localStorage.getItem('derrapa-2d') !== '1'; } catch (e) {}
+
+$('qr').src = '/qr.svg';
+fetch('/join').then(r => r.json()).then(j => $('url').textContent = j.url.replace(/^https?:\/\//, ''));
+
+// ---------- Botones del anfitrión ----------
+const unlock = () => sfx.unlock();
+addEventListener('pointerdown', unlock); addEventListener('keydown', unlock);
+const startRace = () => { sfx.unlock(); socket.emit(S && S.state === 'finished' ? 'rematch' : 'start'); };
+$('start').onclick = startRace; $('again').onclick = startRace;
+$('reset').onclick = () => socket.emit('reset'); $('toGrid').onclick = () => socket.emit('reset');
+$('bot').onclick = () => socket.emit('addBot');
+$('nobots').onclick = () => socket.emit('removeBots');
+document.querySelectorAll('[data-env]').forEach(b => b.onclick = () => socket.emit('setEnv', b.dataset.env));
+let camMode = 'auto';
+try { camMode = localStorage.getItem('derrapa-cam') || 'auto'; } catch (e) {}
+function setCam(m) { camMode = m; if (world) world.camMode = m; document.querySelectorAll('[data-cam]').forEach(b => b.classList.toggle('sel', b.dataset.cam === m)); try { localStorage.setItem('derrapa-cam', m); } catch (e) {} }
+document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => setCam(b.dataset.cam));
+setCam(camMode);
+function setMute(m) { sfx.setMuted(m); $('mute').textContent = m ? '🔇 Silencio' : '🔊 Sonido'; $('mute').classList.toggle('sel', m); }
+$('mute').onclick = () => setMute(!sfx.muted); setMute(sfx.muted);
+function setView(three) {
+  use3D = three && !!world;
+  document.body.classList.toggle('v2d', !use3D);
+  $('view').textContent = use3D ? '🧊 Vista 2D' : '🧊 Vista 3D';
+  try { localStorage.setItem('derrapa-2d', use3D ? '0' : '1'); } catch (e) {}
+}
+$('view').onclick = () => setView(!use3D);
+$('fs').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {});
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if ('1234'.includes(k) && k) socket.emit('setEnv', ['auto', 'day', 'sunset', 'night'][+k - 1]);
+  else if (k === 'c') setCam({ auto: 'leader', leader: 'orbit', orbit: 'auto' }[camMode]);
+  else if (k === 'm') setMute(!sfx.muted);
+  else if (k === 'v') setView(!use3D);
+  else if (k === 'f') $('fs').click();
+});
+
+// ---------- Red ----------
+socket.on('connect', () => socket.emit('host'));
+socket.on('track', t => {
+  T = t; r2d.setTrack(T);
+  if (!world) {
+    try { world = new World3D($('c3d'), T, $('labels')); world.camMode = camMode; }
+    catch (err) { console.warn('3D no disponible, usamos la vista 2D:', err); world = null; $('view').disabled = true; }
+    $('c3d').addEventListener('webglcontextlost', e => { e.preventDefault(); world = null; setView(false); });
+  }
+  setView(use3D);
+});
+// Guardamos los últimos estados para interpolar a 60 fps aunque lleguen a 30 por segundo
+const buf = [];
+socket.on('state', s => {
+  S = s;
+  buf.push({ t: performance.now(), s }); if (buf.length > 12) buf.shift();
+  if (world) { world.setAmbient(s.env.ambient); world.onEvents(s.events, s); }
+  soundEvents(s);
+  updateUI(s);
+});
+
+// ---------- Interpolación ----------
+const angLerp = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
+function viewAt(now) {
+  if (!buf.length) return null;
+  const rt = now - 70;
+  let i = buf.length - 1;
+  while (i > 0 && buf[i - 1].t > rt) i--;
+  const b = buf[i], a = buf[i - 1];
+  if (!a || rt >= b.t) return b.s;
+  const k = Math.max(0, Math.min(1, (rt - a.t) / (b.t - a.t)));
+  const prev = new Map(a.s.players.map(p => [p.id, p]));
+  return Object.assign({}, b.s, {
+    players: b.s.players.map(p => {
+      const q = prev.get(p.id); if (!q || Math.hypot(p.x - q.x, p.y - q.y) > 80) return p;
+      return Object.assign({}, p, { x: q.x + (p.x - q.x) * k, y: q.y + (p.y - q.y) * k, a: angLerp(q.a, p.a, k), sp: q.sp + (p.sp - q.sp) * k });
+    }),
+    missiles: b.s.missiles.map((m, j) => { const q = a.s.missiles[j]; return q ? [q[0] + (m[0] - q[0]) * k, q[1] + (m[1] - q[1]) * k, m[2]] : m; }),
+  });
+}
+
+// ---------- Sonidos según los sucesos ----------
+function soundEvents(s) {
+  const leader = s.players[0];
+  for (const e of s.events) {
+    switch (e.t) {
+      case 'pick': sfx.pick(); break;
+      case 'turbo': case 'pad': sfx.turbo(); break;
+      case 'hit': sfx.hit(); break;
+      case 'boom': sfx.boom(); break;
+      case 'bump': sfx.bump(); break;
+      case 'use': sfx.use(); break;
+      case 'block': sfx.block(); break;
+      case 'lap':
+        if (e.record && e.lap > 1) showBanner('⏱ ¡VUELTA RÁPIDA!', `${esc(nameOf(s, e.id))} · ${e.time.toFixed(2)} s`);
+        if (leader && e.id === leader.id && e.lap === s.laps) { sfx.finalLap(); showBanner('🏁 ¡ÚLTIMA VUELTA!', esc(leader.name) + ' en cabeza'); }
+        else sfx.lap();
+        break;
+      case 'finish': if (e.pos === 1) { sfx.fanfare(); showBanner('🏆 ¡' + esc(nameOf(s, e.id)) + ' GANA!', ''); } else sfx.lap(); break;
+    }
+  }
+}
+const nameOf = (s, id) => (s.players.find(p => p.id === id) || {}).name || '';
+let bannerT = 0;
+function showBanner(t, sub) {
+  const b = $('banner'); b.innerHTML = t + (sub ? `<small>${sub}</small>` : '');
+  b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+}
+
+// ---------- Interfaz ----------
+function updateUI(s) {
+  const now = performance.now();
+  if (now - lastRankAt > 120 || s.state !== uiState) {
+    lastRankAt = now;
+    $('rank').innerHTML = s.players.map((p, i) =>
+      `<li><b>${s.state === 'lobby' ? '' : i + 1}</b><span class="dot" style="background:${p.color}"></span><span class="nm">${esc(p.name)}</span>
+       <span class="info">${p.item ? ICON[p.item] + ' ' : ''}${p.finished ? '🏁 ' + p.time.toFixed(1) + 's' : s.state === 'lobby' ? '' : 'V' + p.lap + '/' + s.laps}${p.best ? `<small>⏱ ${p.best.toFixed(2)}</small>` : ''}</span></li>`).join('');
+  }
+  $('envBadge').innerHTML = `${ENV_TXT[s.env.ambient]} · ${s.env.clock} Madrid${s.env.mode === 'auto' ? ' · auto' : ''}`;
+  document.querySelectorAll('[data-env]').forEach(b => b.classList.toggle('sel', b.dataset.env === s.env.mode));
+  const st = $('start');
+  st.textContent = s.state === 'finished' ? '🔁 NUEVA CARRERA' : s.state === 'lobby' ? '¡SALIDA!' : '↺ REINICIAR SALIDA';
+  st.classList.toggle('rematch', s.state === 'finished');
+
+  // HUD
+  const racing = s.state === 'racing' || s.state === 'finished';
+  $('hud').style.display = racing ? 'flex' : 'none';
+  if (racing && s.players[0]) {
+    $('hLap').innerHTML = `${s.players[0].lap}<small>/${s.laps}</small>`;
+    $('hTime').textContent = s.raceTime.toFixed(1);
+    $('hFastBox').style.display = s.fastest ? '' : 'none';
+    if (s.fastest) $('hFast').innerHTML = `<span style="color:${s.fastest.color}">●</span> ${esc(s.fastest.name)} ${s.fastest.time.toFixed(2)}s`;
+  }
+  // Mensaje de espera
+  $('lobbyMsg').innerHTML = s.state === 'lobby' ? (s.players.length ? `${s.players.length} piloto${s.players.length > 1 ? 's' : ''} en parrilla<small>Pulsa ¡SALIDA! cuando estéis todos</small>` : 'Esperando pilotos…<small>Escanea el QR con el móvil</small>') : '';
+  // Cuenta atrás animada
+  const c = $('count');
+  if (s.state === 'countdown') {
+    const n = Math.min(3, s.countdown);
+    if (n !== lastCount) { c.textContent = n; c.className = ''; void c.offsetWidth; c.className = 'pop'; sfx.beep(false); }
+    lastCount = n;
+  } else if (s.state === 'racing' && lastCount !== 0 && lastCount !== null) {
+    c.textContent = '¡YA!'; c.className = ''; void c.offsetWidth; c.className = 'pop go'; sfx.beep(true); lastCount = 0;
+  } else if (s.state !== 'racing') lastCount = null;
+  // Podio
+  if (s.state === 'finished' && uiState !== 'finished') setTimeout(() => S && S.state === 'finished' && showPodium(S), 1800);
+  if (s.state !== 'finished') hidePodium();
+  uiState = s.state;
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// ---------- Podio con confeti ----------
+let confetti = [], confOn = false;
+function showPodium(s) {
+  const top = s.players.slice(0, 3), order = [1, 0, 2];
+  $('steps').innerHTML = order.filter(i => top[i]).map(i => {
+    const p = top[i];
+    return `<div class="step p${i + 1}"><div class="who"><div class="trophy">${['🏆', '🥈', '🥉'][i]}</div>
+      <div class="kart" style="background:${p.color}"></div><div class="nm">${esc(p.name)}</div>
+      <div class="tm">${p.finished ? p.time.toFixed(2) + ' s' : 'sin terminar'}</div></div><div class="block">${i + 1}</div></div>`;
+  }).join('');
+  $('results').innerHTML = s.players.slice(3).map((p, i) => `<span>${i + 4}º ${esc(p.name)} ${p.finished ? p.time.toFixed(1) + 's' : '—'}</span>`).join('');
+  $('podFast').innerHTML = s.fastest ? `⏱ Vuelta rápida: <b style="color:${s.fastest.color}">${esc(s.fastest.name)}</b> · ${s.fastest.time.toFixed(2)} s` : '';
+  $('podium').classList.add('show');
+  const cv = $('confetti'); cv.width = cv.clientWidth; cv.height = cv.clientHeight;
+  confetti = []; for (let i = 0; i < 260; i++) confetti.push(newConf(cv, true));
+  confOn = true; sfx.fanfare();
+}
+function hidePodium() { $('podium').classList.remove('show'); confOn = false; }
+function newConf(cv, initial) {
+  return { x: Math.random() * cv.width, y: initial ? -Math.random() * cv.height : -20, vx: (Math.random() - .5) * 120, vy: 80 + Math.random() * 160,
+    r: Math.random() * 6, vr: (Math.random() - .5) * 10, w: 7 + Math.random() * 8, h: 4 + Math.random() * 6,
+    c: ['#ffcc00', '#ff4fd8', '#35e0ff', '#2ed573', '#e8433c', '#ffffff', '#a45cff'][(Math.random() * 7) | 0] };
+}
+function drawConfetti(dt) {
+  if (!confOn) return;
+  const cv = $('confetti'), g = cv.getContext('2d');
+  g.clearRect(0, 0, cv.width, cv.height);
+  for (const c of confetti) {
+    c.x += c.vx * dt + Math.sin(c.y / 30) * 0.8; c.y += c.vy * dt; c.r += c.vr * dt;
+    if (c.y > cv.height + 20) Object.assign(c, newConf(cv, false));
+    g.save(); g.translate(c.x, c.y); g.rotate(c.r); g.scale(1, Math.abs(Math.cos(c.r * 1.7)));
+    g.fillStyle = c.c; g.fillRect(-c.w / 2, -c.h / 2, c.w, c.h); g.restore();
+  }
+}
+
+// ---------- Bucle de dibujo ----------
+let last = performance.now();
+(function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const view = viewAt(now);
+  if (view && T) {
+    if (use3D && world) {
+      try { world.frame(view, dt, now); }
+      catch (err) { console.error(err); world = null; setView(false); }
+    } else r2d.frame(Object.assign({ ambient: view.env.ambient }, view), now);
+    sfx.update(view, world && use3D ? (x, y, z) => world.project(x, y, z) : (x, y) => [x / T.W * innerWidth, y], innerWidth);
+  }
+  drawConfetti(dt);
+  requestAnimationFrame(loop);
+})(last);
+</script>
+</body>
+</html>

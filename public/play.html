@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏁</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d0b1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>¡DERRAPA! · Mando</title>
+<style>
+  :root {
+    --bg: #0d0b1a; --panel: #1b1830; --panel2: #262241; --line: #3a3560;
+    --txt: #fff; --dim: #a9a3c9; --yellow: #ffcc00; --red: #ff4757; --blue: #4dabf7; --orange: #ff922b;
+    --pink: #ff4fd8; --green: #2ed573; --me: #e8433c;
+    --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px);
+    --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent; touch-action: none; }
+  html, body { height: 100%; background: var(--bg); color: var(--txt); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; }
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+      padding: calc(14px + var(--st)) calc(14px + var(--sr)) calc(14px + var(--sb)) calc(14px + var(--sl)); }
+  .hidden { display: none !important; }
+  h1 { font-size: 46px; font-weight: 900; font-style: italic; color: var(--yellow); text-shadow: 3px 3px 0 var(--red), 0 0 24px #ff4fd855; letter-spacing: 1px; }
+  .hint { color: var(--dim); font-size: 14px; text-align: center; max-width: 440px; line-height: 1.4; }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+
+  /* ---------- Pantalla de entrada ---------- */
+  #s-join { background: radial-gradient(ellipse at top, #2b1e5c 0%, var(--bg) 70%); overflow-y: auto; touch-action: pan-y; justify-content: safe center; }
+  #s-join * { touch-action: manipulation; }
+  #name { font-size: 22px; padding: 13px; border-radius: 14px; border: 2px solid var(--line); background: #fff; color: #111;
+      width: 80%; max-width: 320px; text-align: center; -webkit-user-select: text; user-select: text; font-weight: 700; }
+  .modes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
+  .mode { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; width: 190px; text-align: left; }
+  .mode b { display: block; font-size: 17px; margin-bottom: 3px; }
+  .mode span { font-size: 12.5px; color: var(--dim); line-height: 1.3; display: block; }
+  .mode.sel { border-color: var(--yellow); background: #2e2650; box-shadow: 0 0 0 3px #ffcc0033; }
+  .mode .tag { display: inline-block; font-size: 10px; background: var(--green); color: #000; border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: 2px; font-weight: 800; }
+  #go { font-size: 24px; padding: 15px 40px; border-radius: 16px; background: linear-gradient(180deg, #ff5e6c, #e8233c); font-weight: 900;
+      box-shadow: 0 6px 0 #8f1222, 0 10px 30px #e8233c66; letter-spacing: 1px; }
+  #go:active { transform: translateY(4px); box-shadow: 0 2px 0 #8f1222; }
+
+  /* ---------- Mando ---------- */
+  #s-play { padding: 0; gap: 0; background: var(--bg); }
+  #pad { position: absolute; inset: 0; display: grid; gap: 10px;
+      padding: calc(10px + var(--st)) calc(10px + var(--sr)) calc(10px + var(--sb)) calc(10px + var(--sl));
+      grid-template-columns: 1fr minmax(170px, 0.62fr) 1fr; grid-template-areas: "left mid right"; }
+  #left { grid-area: left; display: grid; gap: 10px; }
+  #right { grid-area: right; display: grid; gap: 10px; }
+  #mid { grid-area: mid; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+  .btn { position: relative; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-weight: 900; background: var(--panel); border: 2px solid var(--line); overflow: hidden;
+      box-shadow: inset 0 -6px 0 #0005; transition: transform .06s, background .1s, box-shadow .1s; min-height: 0; }
+  .btn .ic { font-size: clamp(30px, 9vh, 64px); line-height: 1; pointer-events: none; }
+  .btn .lb { font-size: clamp(12px, 3.6vh, 19px); letter-spacing: 1px; margin-top: 4px; pointer-events: none; }
+  .btn .sub { font-size: 11px; font-weight: 600; color: var(--dim); margin-top: 2px; pointer-events: none; }
+  .btn.on { transform: scale(.96); box-shadow: inset 0 3px 10px #0008; }
+  .b-steer { background: linear-gradient(180deg, #2c2752, #1d1a36); }
+  .b-steer.on { background: linear-gradient(180deg, var(--me), #0000 140%); border-color: #fff; }
+  .b-drift { background: linear-gradient(180deg, #23408a, #182a5c); border-color: #3f63c4; }
+  .b-drift.on { background: linear-gradient(180deg, #4dabf7, #1c6fc0); border-color: #fff; color: #001; }
+  .b-drift.c1 { background: linear-gradient(180deg, #74c0fc, #339af0); color: #001; box-shadow: 0 0 22px #4dabf7aa; }
+  .b-drift.c2 { background: linear-gradient(180deg, #ffc078, #ff922b); color: #210; box-shadow: 0 0 26px #ff922bcc; }
+  .b-brake { background: linear-gradient(180deg, #4a1f2a, #33151d); border-color: #7a2c3d; }
+  .b-brake.on { background: linear-gradient(180deg, #ff4757, #b3122a); border-color: #fff; }
+  .b-gas { background: linear-gradient(180deg, #1d4d33, #133523); border-color: #2c7a4f; }
+  .b-gas.on { background: linear-gradient(180deg, #2ed573, #148a45); border-color: #fff; color: #021; }
+  .b-item { background: var(--panel); border: 3px dashed #4a4470; }
+  .b-item.ready { background: radial-gradient(circle at 50% 40%, #fff3b0, #ffcc00 60%, #e0a800); border: 3px solid #fff; color: #221;
+      animation: pulse 1s infinite; }
+  .b-item.ready .sub { color: #5a4600; }
+  .b-item.rolling .ic { animation: spinY .25s linear infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 28px #ffcc00cc; } }
+  @keyframes spinY { 50% { transform: scaleX(.2); } }
+  .lay-easy-l, .lay-man-l { grid-template-columns: 1fr 1fr; }
+  .lay-gyro-l { grid-template-rows: 1fr auto; }
+  .lay-easy-r { grid-template-columns: 1fr 1.15fr; grid-template-rows: 1fr 0.8fr; grid-template-areas: "item drift" "brake drift"; }
+  .lay-man-r { grid-template-columns: 1fr 1.15fr; grid-template-rows: 1fr 1fr; grid-template-areas: "item gas" "brake drift"; }
+  .lay-gyro-r { grid-template-rows: 1.25fr 0.75fr; grid-template-areas: "item" "brake"; }
+  #right [data-btn=item] { grid-area: item; } #right [data-btn=drift] { grid-area: drift; }
+  #right [data-btn=brake] { grid-area: brake; } #right [data-btn=gas] { grid-area: gas; }
+
+  /* HUD central */
+  .card { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 6px 8px; text-align: center; }
+  #topbar { display: flex; gap: 6px; }
+  #posBox { flex: 1; }
+  #pos { font-size: clamp(30px, 11vh, 58px); font-weight: 900; line-height: 1; font-style: italic; }
+  #pos sup { font-size: .45em; }
+  #total { font-size: 12px; color: var(--dim); }
+  #gear { width: 52px; font-size: 26px; background: var(--panel2); border-radius: 16px; border: 2px solid var(--line); touch-action: manipulation; }
+  .row2 { display: flex; gap: 6px; }
+  .row2 .card { flex: 1; padding: 5px 4px; }
+  .k { font-size: 10px; color: var(--dim); letter-spacing: 1px; font-weight: 700; }
+  .v { font-size: clamp(16px, 5.5vh, 26px); font-weight: 900; line-height: 1.1; }
+  .v small { font-size: 11px; color: var(--dim); }
+  #turbo { height: 14px; border-radius: 8px; background: #0006; border: 1px solid var(--line); overflow: hidden; margin-top: 3px; position: relative; }
+  #turboFill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--blue); transition: width .1s; }
+  #turbo::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #fff6; }
+  #msg { font-size: clamp(12px, 3.8vh, 16px); font-weight: 800; color: var(--yellow); min-height: 1.3em; }
+  #steerBar { height: 10px; border-radius: 6px; background: #0006; position: relative; border: 1px solid var(--line); }
+  #steerKnob { position: absolute; top: -5px; width: 18px; height: 18px; border-radius: 50%; left: calc(50% - 9px); background: var(--me); border: 2px solid #fff; }
+  #modeTag { font-size: 11px; color: var(--dim); }
+  #calib { font-size: 15px; padding: 10px; border-radius: 16px; background: var(--panel2); border: 2px solid var(--line); font-weight: 800; touch-action: manipulation; }
+
+  #flash { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle, #0000 30%, var(--red)); opacity: 0; transition: opacity .35s; }
+  #flash.boost { background: radial-gradient(circle, #0000 40%, var(--orange)); }
+  #big { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;
+      font-size: 34vh; font-weight: 900; font-style: italic; color: var(--yellow); opacity: 0; text-shadow: 0 8px 0 #000a, 0 0 40px #ffcc0099; }
+  #big.pop { animation: pop .9s ease-out forwards; }
+  @keyframes pop { 0% { transform: scale(2.2); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 80% { opacity: 1; } 100% { transform: scale(.8); opacity: 0; } }
+
+  /* Ajustes en partida */
+  #settings { position: fixed; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center; z-index: 10; touch-action: pan-y; }
+  #settings * { touch-action: manipulation; }
+  #sheet { background: var(--panel); border: 2px solid var(--line); border-radius: 22px; padding: 16px; width: min(640px, 94vw); max-height: 92vh;
+      overflow-y: auto; touch-action: pan-y; display: flex; flex-direction: column; gap: 12px; }
+  #sheet h2 { font-size: 20px; }
+  .opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; }
+  .opt input[type=range] { flex: 1; max-width: 260px; accent-color: var(--yellow); height: 30px; }
+  .tog { width: 64px; height: 34px; border-radius: 20px; background: #444; position: relative; flex: none; }
+  .tog::after { content: ""; position: absolute; top: 3px; left: 3px; width: 28px; height: 28px; border-radius: 50%; background: #fff; transition: left .15s; }
+  .tog.on { background: var(--green); } .tog.on::after { left: 33px; }
+  .gyroOnly { display: none; } .gyro .gyroOnly { display: flex; }
+  .easyOnly { display: none; } .easy .easyOnly { display: flex; }
+  #close { background: var(--yellow); color: #111; font-weight: 900; padding: 13px; border-radius: 14px; font-size: 18px; }
+  .note { font-size: 12.5px; color: var(--dim); }
+  .warn { color: var(--orange); font-size: 13px; }
+
+  #rotate { background: var(--bg); z-index: 20; display: none; }
+  @media (orientation: portrait) {
+    body.playing:not(.portraitOk) #rotate { display: flex; }
+    #pad { grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; grid-template-areas: "mid mid" "left right"; }
+  }
+</style>
+</head>
+<body>
+<div id="s-join" class="screen">
+  <h1>¡DERRAPA!</h1>
+  <input id="name" maxlength="12" placeholder="Tu nombre" autocomplete="off" enterkeyhint="go">
+  <div class="modes" id="modePick">
+    <button class="mode" data-mode="easy"><b>🟢 Fácil<span class="tag">RECOMENDADO</span></b><span>Acelera solo. Tú giras con ◀ ▶, derrapas y lanzas objetos.</span></button>
+    <button class="mode" data-mode="manual"><b>🎮 Manual</b><span>Tú controlas acelerador, freno, giro y derrape.</span></button>
+    <button class="mode" data-mode="gyro"><b>📱 Giroscopio</b><span>Gira el móvil como un volante. Acelera solo.</span></button>
+  </div>
+  <button id="go">¡A CORRER!</button>
+  <p class="hint">Pon el móvil en horizontal. Puedes cambiar de modo en cualquier momento con ⚙️.</p>
+</div>
+
+<div id="s-play" class="screen hidden">
+  <div id="pad">
+    <div id="left"></div>
+    <div id="mid">
+      <div id="topbar">
+        <div class="card" id="posBox"><div id="pos">–</div><div id="total">esperando</div></div>
+        <button id="gear" aria-label="Ajustes">⚙️</button>
+      </div>
+      <div class="row2">
+        <div class="card"><div class="k">VUELTA</div><div class="v" id="lap">–</div></div>
+        <div class="card"><div class="k">KM/H</div><div class="v" id="spd">0</div></div>
+      </div>
+      <div class="card"><div class="k" id="turboTxt">TURBO · mantén derrape</div><div id="turbo"><div id="turboFill"></div></div></div>
+      <div id="msg">Esperando salida…</div>
+      <div id="steerBar"><div id="steerKnob"></div></div>
+      <div id="modeTag"></div>
+    </div>
+    <div id="right"></div>
+  </div>
+  <div id="flash"></div>
+  <div id="big"></div>
+</div>
+
+<div id="settings" class="hidden">
+  <div id="sheet">
+    <h2>⚙️ Ajustes del mando</h2>
+    <div class="modes" id="modePick2">
+      <button class="mode" data-mode="easy"><b>🟢 Fácil</b><span>Acelera solo · ◀ ▶ grandes</span></button>
+      <button class="mode" data-mode="manual"><b>🎮 Manual</b><span>Acelerador y freno</span></button>
+      <button class="mode" data-mode="gyro"><b>📱 Giroscopio</b><span>Inclina el móvil</span></button>
+    </div>
+    <div class="opt easyOnly"><span>Ayuda de dirección<br><span class="note">Si no tocas ◀ ▶, el kart sigue la curva suavemente</span></span><button class="tog" id="tAssist"></button></div>
+    <div class="opt gyroOnly"><span>Sensibilidad</span><input type="range" id="sens" min="1" max="10" step="1"><b id="sensV"></b></div>
+    <div class="opt gyroOnly"><span>Centrar volante<br><span class="note">Sujeta el móvil recto y pulsa</span></span><button id="calib2" class="mode" style="width:auto">🎯 Calibrar</button></div>
+    <div class="opt gyroOnly"><span>Invertir giro</span><button class="tog" id="tInvert"></button></div>
+    <div class="opt gyroOnly warn hidden" id="gyroWarn">No llegan datos del giroscopio. Hace falta HTTPS (en Render funciona) y en iPhone aceptar el permiso.</div>
+    <div class="opt"><span>Vibración</span><button class="tog" id="tVib"></button></div>
+    <button id="close">Volver a la carrera</button>
+  </div>
+</div>
+
+<div id="rotate" class="screen"><div style="font-size:70px">📱↻</div><p class="hint">Gira el móvil en horizontal para jugar más cómodo</p>
+  <button id="portraitOk" class="mode" style="width:auto;touch-action:manipulation">Seguir en vertical</button></div>
+
+<script>
+// Si se abre con doble clic (file://) no hay servidor: explicamos qué hacer
+if (location.protocol === 'file:') addEventListener('DOMContentLoaded', () => {
+  document.body.innerHTML = '<div style="margin:auto;max-width:560px;padding:30px;font:18px system-ui;color:#fff;line-height:1.5">' +
+    '<h1 style="color:#ffcc00">¡DERRAPA! necesita su servidor</h1>' +
+    '<p>Este archivo no funciona con doble clic. Arranca el juego con <b>npm start</b> en la carpeta <b>derrapa</b> ' +
+    'y abre <b>http://localhost:3000</b> en el navegador (o la URL de Render si ya está publicado).</p></div>';
+});
+</script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+const $ = id => document.getElementById(id);
+const ICON = { nitro: '⚡', triple: '⚡', aceite: '🛢️', misil: '🚀', escudo: '🛡️' };
+const NAME = { nitro: 'Nitro', triple: 'Nitro x3', aceite: 'Aceite', misil: 'Misil', escudo: 'Escudo' };
+const ROLL = ['⚡', '🛢️', '🚀', '🛡️'];
+
+// ---------- Preferencias (se guardan en el móvil) ----------
+const PREF = { mode: 'easy', sens: 5, invert: false, vib: true, assist: true, offset: 0 };
+try { Object.assign(PREF, JSON.parse(localStorage.getItem('derrapa-prefs') || '{}')); } catch (e) {}
+const savePrefs = () => { try { localStorage.setItem('derrapa-prefs', JSON.stringify(PREF)); } catch (e) {} };
+try { $('name').value = localStorage.getItem('derrapa-name') || ''; } catch (e) {}
+const vib = p => { if (PREF.vib && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} };
+
+// ---------- Estado del mando ----------
+let joined = false, myColor = '#e8433c';
+const pressed = new Set();       // botones pulsados ahora mismo (data-btn)
+let steer = 0, tilt = null, lastTiltAt = 0, rawTilt = 0, itemReq = false, lastSent = '';
+
+// ---------- Construcción de los botones según el modo ----------
+const B = {
+  left:  '<div class="btn b-steer" data-btn="left"><div class="ic">◀</div><div class="lb">IZQUIERDA</div></div>',
+  right: '<div class="btn b-steer" data-btn="right"><div class="ic">▶</div><div class="lb">DERECHA</div></div>',
+  drift: '<div class="btn b-drift" data-btn="drift"><div class="ic">💨</div><div class="lb">DERRAPE</div><div class="sub">mantén y suelta</div></div>',
+  brake: '<div class="btn b-brake" data-btn="brake"><div class="ic" style="font-size:clamp(22px,6vh,40px)">🛑</div><div class="lb">FRENO</div></div>',
+  gas:   '<div class="btn b-gas" data-btn="gas"><div class="ic">⏫</div><div class="lb">ACELERAR</div></div>',
+  item:  '<div class="btn b-item" data-btn="item"><div class="ic" id="itemIcon">·</div><div class="lb" id="itemName">OBJETO</div><div class="sub" id="itemSub">coge una caja ?</div></div>',
+};
+function layout() {
+  const m = PREF.mode;
+  const L = $('left'), R = $('right');
+  L.className = 'lay-' + (m === 'gyro' ? 'gyro' : m === 'manual' ? 'man' : 'easy') + '-l';
+  R.className = 'lay-' + (m === 'gyro' ? 'gyro' : m === 'manual' ? 'man' : 'easy') + '-r';
+  if (m === 'gyro') {
+    L.innerHTML = B.drift + '<button id="calib">🎯 Calibrar volante</button>';
+    R.innerHTML = B.item + B.brake;
+    $('calib').onclick = calibrate;
+  } else {
+    L.innerHTML = B.left + B.right;
+    R.innerHTML = B.item + (m === 'manual' ? B.gas : '') + B.brake + B.drift;
+  }
+  $('modeTag').textContent = { easy: 'Modo fácil · acelera solo', manual: 'Modo manual', gyro: 'Giroscopio · acelera solo' }[m];
+  document.querySelectorAll('.mode[data-mode]').forEach(b => b.classList.toggle('sel', b.dataset.mode === m));
+  $('sheet').className = m === 'gyro' ? 'gyro' : m === 'easy' ? 'easy' : '';
+  pressed.clear(); lastItemState = null; renderItem();
+}
+
+async function setMode(m) {
+  PREF.mode = m; savePrefs(); layout();
+  if (m === 'gyro') await enableGyro(true);
+}
+
+document.querySelectorAll('.mode[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+// ---------- Giroscopio ----------
+let gyroOn = false;
+async function enableGyro(calib) {
+  // iPhone pide permiso explícito (solo con HTTPS y desde un toque del usuario)
+  if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+    try { await DeviceOrientationEvent.requestPermission(); } catch (e) {}
+  }
+  if (!gyroOn) { window.addEventListener('deviceorientation', onTilt); gyroOn = true; }
+  if (calib) setTimeout(calibrate, 400);
+  setTimeout(() => $('gyroWarn').classList.toggle('hidden', performance.now() - lastTiltAt < 1500), 1600);
+}
+function tiltValue(e) {
+  const ang = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0;
+  // En horizontal el "volante" es beta; en vertical, gamma
+  return ang === 90 ? e.beta : (ang === -90 || ang === 270) ? -e.beta : e.gamma;
+}
+function onTilt(e) {
+  if (e.beta == null) return;
+  lastTiltAt = performance.now();
+  rawTilt = tiltValue(e);
+  const maxDeg = 46 - PREF.sens * 3.4;        // sensibilidad 1 → 43°, 10 → 12° para girar del todo
+  let v = (rawTilt - PREF.offset) * (PREF.invert ? -1 : 1);
+  if (Math.abs(v) < 1.5) v = 0;               // zona muerta para ir recto sin temblar
+  tilt = Math.max(-1, Math.min(1, v / maxDeg));
+}
+function calibrate() { PREF.offset = rawTilt || 0; savePrefs(); vib(40); flashMsg('🎯 Volante centrado'); }
+$('calib2').onclick = calibrate;
+$('sens').value = PREF.sens; $('sensV').textContent = PREF.sens;
+$('sens').oninput = () => { PREF.sens = +$('sens').value; $('sensV').textContent = PREF.sens; savePrefs(); };
+function bindTog(id, key, after) {
+  const el = $(id); el.classList.toggle('on', !!PREF[key]);
+  el.onclick = () => { PREF[key] = !PREF[key]; el.classList.toggle('on', PREF[key]); savePrefs(); after && after(); };
+}
+bindTog('tInvert', 'invert'); bindTog('tVib', 'vib', () => vib(60)); bindTog('tAssist', 'assist');
+
+// ---------- Entrada a la carrera ----------
+$('go').onclick = async () => {
+  const name = $('name').value.trim() || 'Piloto';
+  try { localStorage.setItem('derrapa-name', name); } catch (e) {}
+  if (PREF.mode === 'gyro') await enableGyro(true);
+  try { await document.documentElement.requestFullscreen(); } catch (e) {}
+  try { await screen.orientation.lock('landscape'); } catch (e) {}
+  keepAwake();
+  socket.emit('join', name);
+};
+$('name').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+
+socket.on('joined', ({ color }) => {
+  joined = true; myColor = color;
+  document.documentElement.style.setProperty('--me', color);
+  $('s-join').classList.add('hidden');
+  $('s-play').classList.remove('hidden');
+  document.body.classList.add('playing');
+  document.body.style.boxShadow = `inset 0 0 0 5px ${color}`;
+  layout();
+});
+socket.on('full', () => alert('La carrera está llena (12 pilotos)'));
+// Si el servidor se reinicia o se corta la wifi, volvemos a entrar solos
+socket.on('connect', () => { if (joined) socket.emit('join', $('name').value.trim() || 'Piloto'); });
+
+// Pantalla siempre encendida durante la carrera
+let wake = null;
+async function keepAwake() { try { wake = await navigator.wakeLock.request('screen'); } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && joined) keepAwake(); releaseAll(); });
+
+// ---------- Ajustes en partida ----------
+$('gear').addEventListener('click', () => { releaseAll(); $('settings').classList.remove('hidden'); });
+$('close').onclick = () => $('settings').classList.add('hidden');
+$('portraitOk').onclick = () => document.body.classList.add('portraitOk');
+
+// ---------- Multitáctil robusto ----------
+// En cada evento recalculamos qué botones hay bajo TODOS los dedos. Así se pueden pulsar varios
+// a la vez, deslizar de ◀ a ▶ sin levantar el dedo y nunca se queda nada "enganchado".
+const mouse = { down: false, x: 0, y: 0 };
+function btnAt(x, y) { const el = document.elementFromPoint(x, y); return el && el.closest && el.closest('[data-btn]'); }
+function recompute(points) {
+  const now = new Set();
+  for (const [x, y] of points) { const b = btnAt(x, y); if (b) now.add(b.dataset.btn); }
+  for (const b of now) if (!pressed.has(b)) onPress(b);
+  for (const b of [...pressed]) if (!now.has(b)) pressed.delete(b);
+  for (const b of now) pressed.add(b);
+  document.querySelectorAll('[data-btn]').forEach(el => el.classList.toggle('on', pressed.has(el.dataset.btn)));
+  sendInput();
+}
+function onPress(b) {
+  if (b === 'item') { itemReq = true; vib(35); }
+  else if (b === 'drift') vib(15);
+  else if (b === 'brake') vib(25);
+  else vib(8);
+}
+function playTouch(e) {
+  if (!joined || !$('settings').classList.contains('hidden')) return;
+  if (e.target.closest && e.target.closest('#gear,#calib,#portraitOk')) return;
+  e.preventDefault();
+  recompute([...e.touches].map(t => [t.clientX, t.clientY]));
+}
+['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(t => $('s-play').addEventListener(t, playTouch, { passive: false }));
+// Ratón (para probar en el ordenador)
+$('s-play').addEventListener('mousedown', e => { if (e.target.closest('#gear,#calib')) return; mouse.down = true; mouse.x = e.clientX; mouse.y = e.clientY; recompute([[mouse.x, mouse.y]]); });
+addEventListener('mousemove', e => { if (mouse.down) { mouse.x = e.clientX; mouse.y = e.clientY; recompute([[mouse.x, mouse.y]]); } });
+addEventListener('mouseup', () => { if (mouse.down) { mouse.down = false; recompute([]); } });
+// Teclado (también para probar): flechas, espacio = derrape, X = objeto, Z / ↓ = freno, ↑ = acelerar
+const KEYS = { ArrowLeft: 'left', ArrowRight: 'right', ' ': 'drift', x: 'item', z: 'brake', ArrowDown: 'brake', ArrowUp: 'gas' };
+const keysDown = new Set();
+addEventListener('keydown', e => { const b = KEYS[e.key]; if (!b || !joined || e.repeat) return; e.preventDefault(); keysDown.add(b); if (!pressed.has(b)) { onPress(b); pressed.add(b); } sendInput(); });
+addEventListener('keyup', e => { const b = KEYS[e.key]; if (!b) return; keysDown.delete(b); pressed.delete(b); sendInput(); });
+function releaseAll() { pressed.clear(); keysDown.clear(); mouse.down = false; document.querySelectorAll('[data-btn].on').forEach(el => el.classList.remove('on')); sendInput(); }
+addEventListener('blur', releaseAll);
+addEventListener('pagehide', releaseAll);
+// Evitar zoom, menú contextual y gestos del navegador
+['gesturestart', 'gesturechange', 'dblclick', 'contextmenu'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+
+// ---------- Mando → servidor ----------
+function inputNow() {
+  const m = PREF.mode, p = pressed;
+  const gas = m === 'manual' ? ((p.has('gas') || p.has('drift')) ? 1 : 0) : 1;
+  return {
+    steer: +steer.toFixed(2), throttle: gas, brake: p.has('brake'), drift: p.has('drift'),
+    item: itemReq, assist: m === 'easy' && PREF.assist,
+  };
+}
+function sendInput(force) {
+  if (!joined) return;
+  const inp = inputNow();
+  const key = JSON.stringify(inp);
+  if (!force && key === lastSent && !inp.item) return;
+  socket.emit('input', inp);
+  lastSent = key; itemReq = false;
+}
+// Dirección suavizada (los botones no dan tirones) a 60 Hz
+let lastT = performance.now();
+(function steerLoop(t) {
+  const dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
+  if (PREF.mode === 'gyro') steer = tilt ?? 0;
+  else {
+    const want = (pressed.has('right') ? 1 : 0) - (pressed.has('left') ? 1 : 0);
+    const rate = want === 0 ? 12 : Math.sign(want) !== Math.sign(steer) ? 14 : 7;
+    steer += Math.max(-rate * dt, Math.min(rate * dt, want - steer));
+  }
+  $('steerKnob').style.left = `calc(${50 + steer * 46}% - 9px)`;
+  requestAnimationFrame(steerLoop);
+})(lastT);
+setInterval(() => sendInput(true), 50);    // 20 veces por segundo, como antes
+
+// ---------- Servidor → mando ----------
+let lastHits = 0, lastState = '', rollT = 0, lastItemState = null, lastCount = null, lastRace = -1, me = null;
+function renderItem() {
+  const it = document.querySelector('[data-btn=item]');
+  if (!it || !me) return;
+  const icon = $('itemIcon'), nm = $('itemName'), sub = $('itemSub');
+  it.classList.toggle('rolling', !!me.rolling);
+  if (me.rolling) { icon.textContent = ROLL[rollT++ % ROLL.length]; nm.textContent = '¿…?'; sub.textContent = 'sorteando'; it.classList.remove('ready'); }
+  else if (me.item) {
+    icon.textContent = ICON[me.item]; nm.textContent = NAME[me.item].toUpperCase() + (me.count > 1 && me.item !== 'triple' ? ` x${me.count}` : me.item === 'triple' ? ` (${me.count})` : '');
+    sub.textContent = '¡toca para usar!'; it.classList.add('ready');
+  } else { icon.textContent = '·'; nm.textContent = 'OBJETO'; sub.textContent = 'coge una caja ?'; it.classList.remove('ready'); }
+}
+function flashMsg(t) { $('msg').textContent = t; msgHold = performance.now() + 1500; }
+let msgHold = 0;
+function bigText(t, color) { const b = $('big'); b.textContent = t; b.style.color = color || ''; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+function fmt(t) { return t ? t.toFixed(2) + ' s' : '–'; }
+
+socket.on('me', m => {
+  me = m;
+  if (m.raceNo !== lastRace) { lastRace = m.raceNo; lastHits = m.hits; }
+  $('pos').innerHTML = m.state === 'lobby' ? '–' : `${m.pos}<sup>º</sup>`;
+  $('total').textContent = m.state === 'lobby' ? 'esperando' : `de ${m.total}`;
+  $('lap').innerHTML = m.state === 'lobby' ? '–' : `${m.lap}<small>/${m.laps}</small>`;
+  $('spd').textContent = Math.round(Math.abs(m.speed || 0) * 0.3);
+  // Carga del mini-turbo
+  const ch = m.drift >= 0 ? m.charge : 0;
+  $('turboFill').style.width = (ch * 100) + '%';
+  $('turboFill').style.background = m.drift >= 2 ? 'var(--orange)' : m.drift >= 1 ? 'var(--blue)' : '#cfd8ff';
+  $('turboTxt').textContent = m.boost ? '🔥 ¡TURBO!' : m.drift >= 2 ? '🔥 TURBO MÁXIMO · ¡suelta!' : m.drift >= 1 ? '💙 TURBO LISTO · suelta' : m.drift >= 0 ? 'Cargando turbo…' : 'TURBO · mantén derrape';
+  const d = document.querySelector('[data-btn=drift]');
+  if (d) { d.classList.toggle('c1', m.drift === 1); d.classList.toggle('c2', m.drift >= 2); }
+
+  if (performance.now() > msgHold) $('msg').textContent =
+    m.state === 'lobby' ? 'Esperando salida…' :
+    m.state === 'countdown' ? '¡Preparados!' :
+    m.finished ? `🏁 ¡Meta! ${m.time.toFixed(1)} s · ${m.pos}º` :
+    m.state === 'finished' ? 'Carrera terminada' :
+    m.shield ? '🛡️ Escudo activo' :
+    m.lap === m.laps ? '🏁 ¡ÚLTIMA VUELTA!' :
+    m.bestLap ? `Tu mejor vuelta: ${fmt(m.bestLap)}` : '¡Corre!';
+
+  // Cuenta atrás grande
+  if (m.state === 'countdown') {
+    const n = Math.min(3, m.countdown);
+    if (n !== lastCount) { bigText(n); vib(60); }
+    lastCount = n;
+  } else if (m.state === 'racing' && lastState === 'countdown') { bigText('¡YA!', '#2ed573'); vib(300); lastCount = null; }
+
+  // Objeto (con ruleta mientras sale)
+  const itemKey = m.rolling ? 'roll' : (m.item || '') + m.count;
+  if (m.rolling || itemKey !== lastItemState) {
+    if (!m.rolling && m.item && lastItemState === 'roll') vib([30, 40, 30]);
+    renderItem();
+  }
+  lastItemState = itemKey;
+
+  // Sucesos: golpes, turbo, vueltas
+  const fl = $('flash');
+  if (m.hits > lastHits) { vib([200, 60, 200]); fl.className = ''; fl.style.opacity = .75; setTimeout(() => fl.style.opacity = 0, 160); flashMsg('💥 ¡Te han dado!'); }
+  lastHits = m.hits;
+  for (const e of m.ev) {
+    if (e === 'turbo' || e === 'pad') { vib(40); fl.className = 'boost'; fl.style.opacity = .5; setTimeout(() => fl.style.opacity = 0, 120); }
+    if (e === 'block') { vib(80); flashMsg('🛡️ ¡El escudo te ha salvado!'); }
+    if (e === 'lap' && !m.finished) { vib([40, 40, 40]); flashMsg(m.lastLap ? `⏱ Vuelta: ${fmt(m.lastLap)}` : 'Vuelta'); if (m.lap === m.laps) bigText('ÚLTIMA', '#ff922b'); }
+    if (e === 'finish') { vib([100, 50, 100, 50, 300]); bigText(m.pos === 1 ? '🏆' : m.pos + 'º', '#ffcc00'); }
+  }
+  lastState = m.state;
+});
+</script>
+</body>
+</html>
